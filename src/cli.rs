@@ -80,6 +80,8 @@ pub enum WorkoutAction {
         workout_type: Option<String>,
         #[arg(short, long)]
         notes: Option<String>,
+        #[arg(short, long)]
+        date: Option<String>,
     },
     /// List workouts
     List {

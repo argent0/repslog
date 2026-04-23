@@ -7,7 +7,7 @@ async fn test_set_numbering() {
     let repo = Repository::new(pool);
 
     let ex_id = repo.add_exercise("Ex1", "cat", None, None, None, false).await.unwrap();
-    let w_id = repo.create_workout(None, None).await.unwrap();
+    let w_id = repo.create_workout(None, None, None).await.unwrap();
     let we_id = repo.add_workout_exercise(w_id, ex_id, 1, None).await.unwrap();
 
     let set1_num = repo.get_next_set_number(we_id).await.unwrap();
@@ -25,7 +25,7 @@ async fn test_set_quick_logic() {
     let repo = Repository::new(pool);
 
     let ex_id = repo.add_exercise("Pullups", "calisthenics", None, Some("bodyweight"), None, false).await.unwrap();
-    let w_id = repo.create_workout(None, None).await.unwrap();
+    let w_id = repo.create_workout(None, None, None).await.unwrap();
 
     // Replicating Quick logic from handle_set
     let exercise = repo.find_exercise_by_id_or_name("Pullups").await.unwrap().unwrap();

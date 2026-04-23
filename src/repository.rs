@@ -55,10 +55,11 @@ impl Repository {
     }
 
     // --- Workouts ---
-    pub async fn create_workout(&self, workout_type: Option<&str>, notes: Option<&str>) -> Result<i64> {
-        let res = sqlx::query("INSERT INTO workouts (workout_type, notes) VALUES (?, ?)")
+    pub async fn create_workout(&self, workout_type: Option<&str>, notes: Option<&str>, started_at: Option<&str>) -> Result<i64> {
+        let res = sqlx::query("INSERT INTO workouts (workout_type, notes, started_at) VALUES (?, ?, COALESCE(?, CURRENT_TIMESTAMP))")
             .bind(workout_type)
             .bind(notes)
+            .bind(started_at)
             .execute(&self.pool)
             .await?;
         Ok(res.last_insert_rowid())

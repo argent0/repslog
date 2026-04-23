@@ -26,7 +26,7 @@ async fn test_workout_flow() {
     let ex_id = repo.add_exercise("Bench Press", "strength", None, Some("barbell"), None, false).await.unwrap();
 
     // 2. Create Workout
-    let w_id = repo.create_workout(Some("Push"), Some("Morning workout")).await.unwrap();
+    let w_id = repo.create_workout(Some("Push"), Some("Morning workout"), None).await.unwrap();
     assert!(w_id > 0);
 
     // 3. Add Exercise to Workout

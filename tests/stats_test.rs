@@ -8,7 +8,7 @@ async fn test_stats_prs() {
     let repo = Repository::new(pool);
 
     let ex_id = repo.add_exercise("Squat", "strength", None, Some("barbell"), None, false).await.unwrap();
-    let w_id = repo.create_workout(Some("Legs"), None).await.unwrap();
+    let w_id = repo.create_workout(Some("Legs"), None, None).await.unwrap();
     let we_id = repo.add_workout_exercise(w_id, ex_id, 1, None).await.unwrap();
 
     // Max weight set
@@ -30,7 +30,7 @@ async fn test_stats_volume() {
     let repo = Repository::new(pool);
 
     let ex_id = repo.add_exercise("Curl", "strength", None, Some("dumbbell"), None, false).await.unwrap();
-    let w_id = repo.create_workout(Some("Arms"), None).await.unwrap();
+    let w_id = repo.create_workout(Some("Arms"), None, None).await.unwrap();
     let we_id = repo.add_workout_exercise(w_id, ex_id, 1, None).await.unwrap();
 
     // Volume: 10 * 10.0 = 100.0
