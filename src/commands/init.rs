@@ -5,7 +5,7 @@ use sqlx::sqlite::SqlitePool;
 
 pub async fn handle_init(pool: &SqlitePool) -> Result<()> {
     println!("Initializing database...");
-    run_migrations(pool).await?;
+    run_migrations(pool, false).await?;
     
     let repo = Repository::new(pool.clone());
     

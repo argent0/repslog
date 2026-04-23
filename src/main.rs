@@ -24,8 +24,8 @@ async fn run(cli: Cli) -> Result<()> {
             commands::init::handle_init(&pool).await?;
             return Ok(());
         }
-        Commands::Migrate { status, dry_run } => {
-            commands::migrate::handle_migrate(&pool, *status, *dry_run).await?;
+        Commands::Migrate { status, dry_run, force } => {
+            commands::migrate::handle_migrate(&pool, *status, *dry_run, *force).await?;
             return Ok(());
         }
         _ => {

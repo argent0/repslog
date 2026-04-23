@@ -1,4 +1,5 @@
 use sqlx::sqlite::{SqlitePool, SqliteConnectOptions, SqlitePoolOptions};
+use sqlx::Executor;
 use crate::error::{Result, RepslogError};
 use crate::config::get_db_url;
 use std::str::FromStr;
@@ -37,7 +38,7 @@ pub async fn setup_test_db() -> Result<SqlitePool> {
         .await?;
     
     ensure_migrations_table(&pool).await?;
-    run_migrations(&pool).await?;
+    run_migrations(&pool, false).await?;
     Ok(pool)
 }
 
@@ -91,8 +92,8 @@ pub fn get_all_migrations() -> Result<Vec<Migration>> {
     Ok(migrations)
 }
 
-pub async fn run_migrations(pool: &SqlitePool) -> Result<Vec<Migration>> {
-    let current_version = get_current_version(pool).await?;
+pub async fn run_migrations(pool: &SqlitePool, force: bool) -> Result<Vec<Migration>> {
+    let current_version = if force { 0 } else { get_current_version(pool).await? };
     let all_migrations = get_all_migrations()?;
     let mut applied = Vec::new();
 
@@ -100,14 +101,27 @@ pub async fn run_migrations(pool: &SqlitePool) -> Result<Vec<Migration>> {
         if migration.version > current_version {
             let mut tx = pool.begin().await?;
             
-            // Execute migration SQL
-            // sqlx doesn't support executing multiple statements in one query easily with parameters,
-            // but for migrations we can use raw execute on the connection.
-            // Actually, SqlitePool::execute works fine for multiple statements.
-            sqlx::query(&migration.sql).execute(&mut *tx).await?;
+            // Execute migration SQL statements individually to handle errors more granularly
+            let statements: Vec<&str> = migration.sql.split(';').collect();
+            for statement in statements {
+                let s = statement.trim();
+                if s.is_empty() {
+                    continue;
+                }
+                if let Err(e) = tx.execute(s).await {
+                    if force {
+                        let msg = e.to_string();
+                        if msg.contains("duplicate column name") || msg.contains("already exists") {
+                            continue;
+                        }
+                    }
+                    return Err(e.into());
+                }
+            }
 
-            // Record migration
-            sqlx::query("INSERT INTO migrations (version, name) VALUES (?, ?)")
+            // Record migration (upsert if forced)
+            sqlx::query("INSERT INTO migrations (version, name) VALUES (?, ?) 
+                         ON CONFLICT(version) DO UPDATE SET name=excluded.name, applied_at=CURRENT_TIMESTAMP")
                 .bind(migration.version)
                 .bind(&migration.name)
                 .execute(&mut *tx)

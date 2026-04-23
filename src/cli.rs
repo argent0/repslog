@@ -49,6 +49,9 @@ pub enum Commands {
         /// Show exactly what would be applied (no changes)
         #[arg(short, long)]
         dry_run: bool,
+        /// Force re-execution of migrations even if already applied
+        #[arg(short, long)]
+        force: bool,
     },
     /// Initialize database and seed default exercises
     Init,

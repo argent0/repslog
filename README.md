@@ -119,6 +119,7 @@ Keep your schema up-to-date.
 repslog migrate                 # Apply all pending migrations
 repslog migrate --status        # Show current vs. latest version
 repslog migrate --dry-run       # Show what would be applied
+repslog migrate --force         # Force re-apply all migrations (idempotent, fixes partial applications)
 ```
 
 ## Project Structure

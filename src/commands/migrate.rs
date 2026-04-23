@@ -7,6 +7,7 @@ pub async fn handle_migrate(
     pool: &SqlitePool,
     status: bool,
     dry_run: bool,
+    force: bool,
 ) -> Result<()> {
     let current_version = get_current_version(pool).await?;
     let all_migrations = get_all_migrations()?;
@@ -23,18 +24,23 @@ pub async fn handle_migrate(
         return Ok(());
     }
 
-    if current_version >= latest_version {
+    if current_version >= latest_version && !force {
         println!("{} ({}) {}", "Database is already at the latest version".green(), current_version, "No changes needed.");
         return Ok(());
     }
 
     let pending: Vec<_> = all_migrations
+        .clone()
         .into_iter()
-        .filter(|m| m.version > current_version)
+        .filter(|m| force || m.version > current_version)
         .collect();
 
     if dry_run {
-        println!("{} {} to {}", "Dry run: migrating from version".cyan(), current_version, latest_version);
+        if force {
+            println!("{} forces re-execution of ALL migrations.", "Dry run:".cyan());
+        } else {
+            println!("{} {} to {}", "Dry run: migrating from version".cyan(), current_version, latest_version);
+        }
         println!("{}", "The following migrations would be applied:".bold());
         for m in &pending {
             println!("  - {}", m.name);
@@ -43,8 +49,13 @@ pub async fn handle_migrate(
         return Ok(());
     }
 
-    println!("Migrating from version {} to {}...", current_version, latest_version);
-    let applied = run_migrations(pool).await?;
+    if force {
+        println!("Force-migrating all {} available migrations...", pending.len());
+    } else {
+        println!("Migrating from version {} to {}...", current_version, latest_version);
+    }
+    
+    let applied = run_migrations(pool, force).await?;
     
     println!(
         "{} Successfully migrated from version {} to version {} ({} migrations applied).",
