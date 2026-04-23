@@ -22,3 +22,14 @@ pub enum RepslogError {
 }
 
 pub type Result<T> = std::result::Result<T, RepslogError>;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_error_display() {
+        let err = RepslogError::Config("test config error".into());
+        assert_eq!(format!("{}", err), "Configuration error: test config error");
+    }
+}

@@ -22,3 +22,16 @@ pub fn print_table(headers: Vec<&str>, rows: Vec<Vec<String>>) {
     }
     println!("{}", table);
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_print_table_smoke() {
+        // Just verify it doesn't panic
+        let headers = vec!["ID", "Name"];
+        let rows = vec![vec!["1".to_string(), "Test".to_string()]];
+        print_table(headers, rows);
+    }
+}

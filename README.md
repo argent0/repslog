@@ -1,6 +1,6 @@
 # repslog
 
-A Linux-first (but macOS-compatible) command-line workout tracker.
+A Linux-first command-line workout tracker.
 
 ## Features
 - SQLite local storage (XDG compliant)

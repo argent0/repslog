@@ -1,4 +1,4 @@
-use sqlx::sqlite::{SqlitePool, SqliteConnectOptions};
+use sqlx::sqlite::{SqlitePool, SqliteConnectOptions, SqlitePoolOptions};
 use sqlx::migrate::Migrator;
 use crate::error::Result;
 use crate::config::get_db_url;
@@ -13,6 +13,20 @@ pub async fn setup_db() -> Result<SqlitePool> {
     
     let pool = SqlitePool::connect_with(options).await?;
     
+    Ok(pool)
+}
+
+pub async fn setup_test_db() -> Result<SqlitePool> {
+    // Unique in-memory DB for each call to prevent interference
+    let options = SqliteConnectOptions::from_str("sqlite::memory:")?
+        .foreign_keys(true);
+    
+    let pool = SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect_with(options)
+        .await?;
+    
+    run_migrations(&pool).await?;
     Ok(pool)
 }
 

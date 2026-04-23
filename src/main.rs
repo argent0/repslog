@@ -1,17 +1,9 @@
-mod cli;
-mod config;
-mod db;
-mod error;
-mod models;
-mod repository;
-mod utils;
-mod commands;
-
 use clap::Parser;
-use crate::cli::{Cli, Commands};
-use crate::repository::Repository;
-use crate::db::setup_db;
-use crate::error::Result;
+use repslog::cli::{Cli, Commands};
+use repslog::repository::Repository;
+use repslog::db::setup_db;
+use repslog::error::Result;
+use repslog::commands;
 
 #[tokio::main]
 async fn main() -> Result<()> {

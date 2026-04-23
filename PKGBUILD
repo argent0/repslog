@@ -4,11 +4,11 @@ pkgver=0.1.0
 pkgrel=1
 pkgdesc="A Linux-first command-line workout tracker"
 arch=('x86_64')
-url="https://github.com/aner/repslog"
+url="https://github.com/argent0/repslog"
 license=('MIT')
 depends=('gcc-libs')
 makedepends=('git' 'rust' 'cargo')
-source=("git+$url.git")
+source=("${pkgname}::git+ssh://git@github.com/argent0/repslog.git")
 sha256sums=('SKIP')
 
 pkgver() {

@@ -2,6 +2,8 @@
 name = "repslog"
 version = "0.1.0"
 edition = "2021"
+repository = "https://github.com/argent0/repslog"
+homepage = "https://github.com/argent0/repslog"
 
 [dependencies]
 clap = { version = "4.4", features = ["derive", "env", "string"] }
