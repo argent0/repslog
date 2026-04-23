@@ -3,3 +3,4 @@ pub mod workout;
 pub mod set;
 pub mod stats;
 pub mod init;
+pub mod migrate;

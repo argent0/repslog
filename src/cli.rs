@@ -41,6 +41,15 @@ pub enum Commands {
         #[command(subcommand)]
         action: StatsAction,
     },
+    /// Database migrations
+    Migrate {
+        /// Show current version vs. latest available (no changes)
+        #[arg(short, long)]
+        status: bool,
+        /// Show exactly what would be applied (no changes)
+        #[arg(short, long)]
+        dry_run: bool,
+    },
     /// Initialize database and seed default exercises
     Init,
 }

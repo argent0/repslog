@@ -5,8 +5,8 @@ pub enum RepslogError {
     #[error("Database error: {0}")]
     Database(#[from] sqlx::Error),
 
-    #[error("Migration error: {0}")]
-    Migration(#[from] sqlx::migrate::MigrateError),
+    #[error("Database schema is outdated (version {0}). Please run `repslog migrate` first. (Latest version: {1})")]
+    MigrationRequired(i32, i32),
 
     #[error("Configuration error: {0}")]
     Config(String),

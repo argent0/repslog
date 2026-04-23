@@ -51,10 +51,12 @@ repslog set add <workout_exercise_id> --reps 15 --rpe 7.5
 repslog workout finish <workout_id> --duration 45 --feeling 4
 ```
 
-### 7. View Stats
+### 8. Database Migrations
+Keep your database schema up-to-date as new features are added.
 ```bash
-repslog stats prs
-repslog stats summary --days 30
+repslog migrate                 # Apply all pending migrations
+repslog migrate --status        # Show current vs. latest version
+repslog migrate --dry-run       # Show what would be applied
 ```
 
 ## Project Structure
