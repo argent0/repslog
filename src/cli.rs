@@ -127,7 +127,8 @@ pub enum WorkoutExerciseAction {
 
 #[derive(Subcommand)]
 pub enum SetAction {
-    /// Add a set to a workout exercise
+    /// Add a set to a workout exercise.
+    /// Example: repslog set add 1 --reps 10 --weight 60 --rir 0.0 --effective-reps 5
     Add {
         workout_exercise_id: Option<i64>,
         #[arg(short, long)]
@@ -140,6 +141,34 @@ pub enum SetAction {
         distance: Option<f64>,
         #[arg(long)]
         rpe: Option<f64>,
+        #[arg(long)]
+        rir: Option<f64>,
+        #[arg(long = "effective-reps")]
+        effective_reps: Option<i32>,
+        #[arg(long = "rest")]
+        rest_seconds: Option<i32>,
+        #[arg(short, long)]
+        notes: Option<String>,
+    },
+    /// Add a rest-pause/cluster set sequence.
+    /// Example: repslog set add-cluster 1 --reps "10,5,5" --weight 100 --rir "0,0,1" --effective-reps "6,4,3" --rest 15
+    #[command(name = "add-cluster")]
+    AddCluster {
+        workout_exercise_id: Option<i64>,
+        #[arg(short, long)]
+        weight: Option<f64>,
+        /// Reps for each cluster separated by commas (e.g. "10,5,5")
+        #[arg(short, long)]
+        reps: String,
+        /// RIR for each cluster separated by commas (e.g. "0,0,1")
+        #[arg(long)]
+        rir: String,
+        /// Effective reps for each cluster separated by commas (e.g. "6,4,3")
+        #[arg(long = "effective-reps")]
+        effective_reps: String,
+        /// Rest seconds between clusters (e.g. "15")
+        #[arg(long = "rest")]
+        rest_seconds: i32,
         #[arg(short, long)]
         notes: Option<String>,
     },

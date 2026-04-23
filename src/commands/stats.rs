@@ -30,7 +30,7 @@ pub async fn handle_stats(action: StatsAction, repo: &Repository) -> Result<()> 
         }
         StatsAction::Volume { exercise, period } => {
             println!("Training Volume for period: {}", period);
-            let mut query = "SELECT e.name, SUM(es.weight_kg * es.reps) as total_volume FROM exercise_sets es JOIN workout_exercises we ON es.workout_exercise_id = we.id JOIN exercises e ON we.exercise_id = e.id JOIN workouts w ON we.workout_id = w.id".to_string();
+            let mut query = "SELECT e.name, SUM(es.weight_kg * es.reps) as total_volume, SUM(es.effective_reps) as total_eff_reps FROM exercise_sets es JOIN workout_exercises we ON es.workout_exercise_id = we.id JOIN exercises e ON we.exercise_id = e.id JOIN workouts w ON we.workout_id = w.id".to_string();
             let days = match period.as_str() {
                 "30d" => 30,
                 "90d" => 90,
@@ -48,12 +48,14 @@ pub async fn handle_stats(action: StatsAction, repo: &Repository) -> Result<()> 
             for r in res {
                 let name: String = r.get("name");
                 let volume: Option<f64> = r.get("total_volume");
+                let eff_reps: Option<i64> = r.get("total_eff_reps");
                 rows.push(vec![
                     name,
                     volume.map(|v| format!("{:.2} kg", v)).unwrap_or_default(),
+                    eff_reps.map(|r| r.to_string()).unwrap_or_default(),
                 ]);
             }
-            print_table(vec!["Exercise", "Total Volume (kg * reps)"], rows);
+            print_table(vec!["Exercise", "Total Volume (kg * reps)", "Total Eff Reps"], rows);
         }
         StatsAction::Summary { days } => {
             println!("Summary for last {} days:", days);

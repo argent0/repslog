@@ -34,8 +34,8 @@ async fn test_workout_flow() {
     assert!(we_id > 0);
 
     // 4. Add Sets
-    let s1 = repo.add_set(we_id, 1, Some(10), Some(60.0), None, None, Some(8.0), None).await.unwrap();
-    let s2 = repo.add_set(we_id, 2, Some(10), Some(60.0), None, None, Some(8.5), None).await.unwrap();
+    let s1 = repo.add_set(we_id, 1, Some(10), Some(60.0), None, None, Some(8.0), None, None, None, None, None).await.unwrap();
+    let s2 = repo.add_set(we_id, 2, Some(10), Some(60.0), None, None, Some(8.5), None, None, None, None, None).await.unwrap();
     assert!(s1 > 0);
     assert!(s2 > 0);
 
@@ -56,4 +56,34 @@ async fn test_workout_flow() {
     let finished_w = repo.get_workout(w_id).await.unwrap().unwrap();
     assert!(finished_w.finished_at.is_some());
     assert_eq!(finished_w.duration_minutes, Some(45));
+}
+
+#[tokio::test]
+async fn test_new_set_fields() {
+    let pool = setup_test_db().await.unwrap();
+    let repo = Repository::new(pool);
+
+    let ex_id = repo.add_exercise("New Fields Exercise", "strength", None, None, None, false).await.unwrap();
+    let w_id = repo.create_workout(None, None, None).await.unwrap();
+    let we_id = repo.add_workout_exercise(w_id, ex_id, 1, None).await.unwrap();
+
+    let rir = Some(1.0);
+    let effective_reps = Some(4);
+    let cluster_id = Some(101i64);
+    let rest_seconds = Some(90);
+
+    let s_id = repo.add_set(
+        we_id, 1, Some(5), Some(100.0), None, None, Some(9.0), 
+        rir, effective_reps, cluster_id, rest_seconds, Some("Test notes")
+    ).await.unwrap();
+    assert!(s_id > 0);
+
+    let sets = repo.list_sets(we_id).await.unwrap();
+    assert_eq!(sets.len(), 1);
+    let s = &sets[0];
+    assert_eq!(s.rir, rir);
+    assert_eq!(s.effective_reps, effective_reps);
+    assert_eq!(s.cluster_id, cluster_id);
+    assert_eq!(s.rest_seconds, rest_seconds);
+    assert_eq!(s.notes, Some("Test notes".to_string()));
 }

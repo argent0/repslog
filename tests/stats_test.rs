@@ -12,9 +12,9 @@ async fn test_stats_prs() {
     let we_id = repo.add_workout_exercise(w_id, ex_id, 1, None).await.unwrap();
 
     // Max weight set
-    repo.add_set(we_id, 1, Some(10), Some(100.0), None, None, Some(9.0), None).await.unwrap();
+    repo.add_set(we_id, 1, Some(10), Some(100.0), None, None, Some(9.0), None, None, None, None, None).await.unwrap();
     // Max reps set (different weight)
-    repo.add_set(we_id, 2, Some(15), Some(80.0), None, None, Some(8.0), None).await.unwrap();
+    repo.add_set(we_id, 2, Some(15), Some(80.0), None, None, Some(8.0), None, None, None, None, None).await.unwrap();
 
     let query = "SELECT e.name, MAX(es.weight_kg) as max_weight, MAX(es.reps) as max_reps FROM exercise_sets es JOIN workout_exercises we ON es.workout_exercise_id = we.id JOIN exercises e ON we.exercise_id = e.id GROUP BY e.name";
     let res = sqlx::query(&query).fetch_one(&repo.pool).await.unwrap();
@@ -34,9 +34,9 @@ async fn test_stats_volume() {
     let we_id = repo.add_workout_exercise(w_id, ex_id, 1, None).await.unwrap();
 
     // Volume: 10 * 10.0 = 100.0
-    repo.add_set(we_id, 1, Some(10), Some(10.0), None, None, None, None).await.unwrap();
+    repo.add_set(we_id, 1, Some(10), Some(10.0), None, None, None, None, None, None, None, None).await.unwrap();
     // Volume: 12 * 10.0 = 120.0
-    repo.add_set(we_id, 2, Some(12), Some(10.0), None, None, None, None).await.unwrap();
+    repo.add_set(we_id, 2, Some(12), Some(10.0), None, None, None, None, None, None, None, None).await.unwrap();
 
     let query = "SELECT e.name, SUM(es.weight_kg * es.reps) as total_volume FROM exercise_sets es JOIN workout_exercises we ON es.workout_exercise_id = we.id JOIN exercises e ON we.exercise_id = e.id GROUP BY e.name";
     let res = sqlx::query(&query).fetch_one(&repo.pool).await.unwrap();

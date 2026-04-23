@@ -39,17 +39,31 @@ pub async fn handle_workout(action: WorkoutAction, repo: &Repository) -> Result<
                 
                 let exercises = repo.list_workout_exercises(workout_id).await?;
                 println!("\nExercises:");
-                let mut rows = Vec::new();
                 for (we, name) in exercises {
+                    println!("\n{} (WE ID: {})", name, we.id);
+                    if let Some(notes) = we.notes {
+                        println!("Notes: {}", notes);
+                    }
                     let sets = repo.list_sets(we.id).await?;
-                    rows.push(vec![
-                        we.id.to_string(),
-                        name,
-                        sets.len().to_string(),
-                        we.notes.unwrap_or_default(),
-                    ]);
+                    let mut set_rows = Vec::new();
+                    for s in sets {
+                        let cluster_label = if let Some(cid) = s.cluster_id {
+                            format!(" [C{}]", cid)
+                        } else {
+                            "".to_string()
+                        };
+                        set_rows.push(vec![
+                            s.set_number.to_string() + &cluster_label,
+                            s.reps.map(|r| r.to_string()).unwrap_or_default(),
+                            s.weight_kg.map(|w| format!("{:.2} kg", w)).unwrap_or_default(),
+                            s.rir.map(|r| format!("{:.1}", r)).unwrap_or_default(),
+                            s.effective_reps.map(|r| r.to_string()).unwrap_or_default(),
+                            s.rest_seconds.map(|r| format!("{}s", r)).unwrap_or_default(),
+                            s.notes.unwrap_or_default(),
+                        ]);
+                    }
+                    print_table(vec!["Set #", "Reps", "Weight", "RIR", "Eff Reps", "Rest", "Notes"], set_rows);
                 }
-                print_table(vec!["WE ID", "Exercise", "Sets", "Notes"], rows);
             } else {
                 println!("Workout not found");
             }

@@ -147,8 +147,8 @@ impl Repository {
     }
 
     // --- Sets ---
-    pub async fn add_set(&self, workout_exercise_id: i64, set_number: i32, reps: Option<i32>, weight: Option<f64>, duration: Option<i32>, distance: Option<f64>, rpe: Option<f64>, notes: Option<&str>) -> Result<i64> {
-        let res = sqlx::query("INSERT INTO exercise_sets (workout_exercise_id, set_number, reps, weight_kg, duration_seconds, distance_km, rpe, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+    pub async fn add_set(&self, workout_exercise_id: i64, set_number: i32, reps: Option<i32>, weight: Option<f64>, duration: Option<i32>, distance: Option<f64>, rpe: Option<f64>, rir: Option<f64>, effective_reps: Option<i32>, cluster_id: Option<i64>, rest_seconds: Option<i32>, notes: Option<&str>) -> Result<i64> {
+        let res = sqlx::query("INSERT INTO exercise_sets (workout_exercise_id, set_number, reps, weight_kg, duration_seconds, distance_km, rpe, rir, effective_reps, cluster_id, rest_seconds, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
             .bind(workout_exercise_id)
             .bind(set_number)
             .bind(reps)
@@ -156,6 +156,10 @@ impl Repository {
             .bind(duration)
             .bind(distance)
             .bind(rpe)
+            .bind(rir)
+            .bind(effective_reps)
+            .bind(cluster_id)
+            .bind(rest_seconds)
             .bind(notes)
             .execute(&self.pool)
             .await?;
@@ -176,5 +180,12 @@ impl Repository {
             .fetch_one(&self.pool)
             .await?;
         Ok(res.get::<Option<i32>, _>("max_set").unwrap_or(0) + 1)
+    }
+
+    pub async fn get_next_cluster_id(&self) -> Result<i64> {
+        let res = sqlx::query("SELECT MAX(cluster_id) as max_cluster FROM exercise_sets")
+            .fetch_one(&self.pool)
+            .await?;
+        Ok(res.get::<Option<i64>, _>("max_cluster").unwrap_or(0) + 1)
     }
 }
