@@ -23,6 +23,18 @@ pub fn print_table(headers: Vec<&str>, rows: Vec<Vec<String>>) {
     println!("{}", table);
 }
 
+pub fn format_duration(seconds: u32) -> String {
+    let mins = seconds / 60;
+    let secs = seconds % 60;
+    format!("{}:{:02}", mins, secs)
+}
+
+pub fn format_pace(min_per_km: f64) -> String {
+    let mins = min_per_km.floor() as u32;
+    let secs = ((min_per_km - mins as f64) * 60.0).round() as u32;
+    format!("{}'{:02}\"/km", mins, secs)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

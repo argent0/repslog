@@ -1,7 +1,7 @@
 use crate::cli::{WorkoutAction, WorkoutExerciseAction};
 use crate::repository::Repository;
 use crate::error::Result;
-use crate::utils::print_table;
+use crate::utils::{print_table, format_duration, format_pace};
 
 pub async fn handle_workout(action: WorkoutAction, repo: &Repository) -> Result<()> {
     match action {
@@ -46,7 +46,7 @@ pub async fn handle_workout(action: WorkoutAction, repo: &Repository) -> Result<
                     }
                     let sets = repo.list_sets(we.id).await?;
                     let mut set_rows = Vec::new();
-                    for s in sets {
+                    for s in &sets {
                         let cluster_label = if let Some(cid) = s.cluster_id {
                             format!(" [C{}]", cid)
                         } else {
@@ -71,10 +71,30 @@ pub async fn handle_workout(action: WorkoutAction, repo: &Repository) -> Result<
                             s.distance_km.map(|d| format!("{:.2} km", d)).unwrap_or_default(),
                             s.duration_seconds.map(|d| format!("{}s", d)).unwrap_or_default(),
                             cardio_info,
-                            s.notes.unwrap_or_default(),
+                            s.notes.as_ref().cloned().unwrap_or_default(),
                         ]);
                     }
                     print_table(vec!["Set #", "Reps", "Weight", "Dist", "Dur", "Cardio", "Notes"], set_rows);
+
+                    // Show Laps if available
+                    for s in &sets {
+                        if let Some(ref laps_json) = s.laps {
+                            let laps = &laps_json.0;
+                            if !laps.is_empty() {
+                                println!("\nLap Breakdown (Set {}):", s.set_number);
+                                let mut lap_rows = Vec::new();
+                                for lap in laps {
+                                    lap_rows.push(vec![
+                                        format!("Lap {}", lap.lap_number),
+                                        format!("{:.2} km", lap.distance_km),
+                                        format_duration(lap.duration_seconds),
+                                        format_pace(lap.pace_min_per_km),
+                                    ]);
+                                }
+                                print_table(vec!["Lap", "Distance", "Time", "Pace"], lap_rows);
+                            }
+                        }
+                    }
                 }
             } else {
                 println!("Workout not found");

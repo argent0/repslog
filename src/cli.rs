@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use crate::models::{HeartRateZones, Lap};
 
 #[derive(Parser)]
 #[command(name = "repslog")]
@@ -167,18 +168,21 @@ pub enum SetAction {
         /// Maximum heart rate in bpm
         #[arg(long = "max-heart-rate")]
         max_heart_rate: Option<f64>,
-        /// Heart rate zones JSON (e.g. '{"z1": 60, "z2": 300, ...}')
-        #[arg(long = "hr-zones")]
-        hr_zones: Option<String>,
+        /// Heart rate zones JSON (e.g. '{"z1_seconds": 60, "z2_seconds": 300, ...}')
+        #[arg(long = "hr-zones", value_parser = |s: &str| serde_json::from_str::<HeartRateZones>(s).map_err(|e| e.to_string()))]
+        hr_zones: Option<HeartRateZones>,
         /// Average pace in min/km (e.g. 5.5)
         #[arg(long)]
         pace: Option<f64>,
         /// Calories burned
         #[arg(long)]
         calories: Option<i32>,
+        /// Laps JSON (e.g. '[{"lap_number":1,"distance_km":1.0,"duration_seconds":332,"pace_min_per_km":5.533}, ...]')
+        #[arg(long, value_parser = |s: &str| serde_json::from_str::<Vec<Lap>>(s).map_err(|e| e.to_string()))]
+        laps: Option<Vec<Lap>>,
     },
     /// Add a cardio set with mandatory heart rate and pace metrics.
-    /// Example: repslog set add-cardio 1 --distance 5.0 --duration 1500 --avg-heart-rate 155 --max-heart-rate 180 --pace 5.0 --calories 450 --hr-zones '{"z1_seconds": 60, "z2_seconds": 1200, "z3_seconds": 240}'
+    /// Example: repslog set add-cardio 1 --distance 5.0 --duration 1500 --avg-heart-rate 155 --max-heart-rate 180 --pace 5.0 --calories 450 --hr-zones '{"z1_seconds": 60, "z2_seconds": 1200, "z3_seconds": 240}' --laps '[{"km": 1, "time": "5:32", "pace": "5:32"}]'
     #[command(name = "add-cardio")]
     AddCardio {
         workout_exercise_id: Option<i64>,
@@ -190,12 +194,14 @@ pub enum SetAction {
         avg_heart_rate: f64,
         #[arg(long = "max-heart-rate")]
         max_heart_rate: f64,
-        #[arg(long = "hr-zones")]
-        hr_zones: String,
+        #[arg(long = "hr-zones", value_parser = |s: &str| serde_json::from_str::<HeartRateZones>(s).map_err(|e| e.to_string()))]
+        hr_zones: HeartRateZones,
         #[arg(long)]
         pace: f64,
         #[arg(long)]
         calories: i32,
+        #[arg(long, value_parser = |s: &str| serde_json::from_str::<Vec<Lap>>(s).map_err(|e| e.to_string()))]
+        laps: Option<Vec<Lap>>,
         #[arg(short, long)]
         notes: Option<String>,
     },

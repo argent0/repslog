@@ -4,7 +4,7 @@ A Linux-first command-line workout tracker designed for flexibility across stren
 
 ## Features
 - **SQLite Storage:** Local, single-file database (XDG compliant: `~/.local/share/repslog/`).
-- **Cardio First-Class Support:** Detailed tracking for runs (heart rate zones, pace, calories).
+- **Cardio First-Class Support:** Detailed tracking for runs (heart rate zones, pace, calories, and structured laps/splits).
 - **Advanced Strength Training:** Support for RPE, RIR, Effective Reps, and Rest-Pause/Cluster sets.
 - **Scriptable:** Non-interactive friendly; supports reading IDs from `stdin`.
 - **Beautiful Output:** Color-coded tabular views using `comfy-table`.
@@ -72,18 +72,25 @@ repslog set add-cluster <we_id> --reps "10,5,5" --weight 100 --rir "0,0,1" --eff
 ```
 
 #### Cardio / Running
-Includes explicit support for Samsung Health style metrics.
+Includes explicit support for Samsung Health style metrics and structured lap/split tracking.
 ```bash
-# Detailed run tracking
+# Detailed run tracking with HR zones and laps/splits
 repslog set add-cardio <we_id> \
-  --distance 5.0 \
-  --duration 1500 \
-  --avg-heart-rate 155 \
-  --max-heart-rate 180 \
-  --pace 5.0 \
-  --calories 450 \
-  --hr-zones '{"z1_seconds": 60, "z2_seconds": 1200, "z3_seconds": 240}'
+  --distance 7.98 \
+  --duration 2701 \
+  --avg-heart-rate 154 \
+  --max-heart-rate 175 \
+  --pace 5.64 \
+  --calories 620 \
+  --hr-zones '{"z1_seconds": 120, "z2_seconds": 1800, "z3_seconds": 600, "z4_seconds": 120, "z5_seconds": 61}' \
+  --laps '[
+    {"lap_number":1,"distance_km":1.0,"duration_seconds":332,"pace_min_per_km":5.533},
+    {"lap_number":2,"distance_km":1.0,"duration_seconds":345,"pace_min_per_km":5.75},
+    {"lap_number":3,"distance_km":1.0,"duration_seconds":338,"pace_min_per_km":5.633},
+    {"lap_number":8,"distance_km":0.98,"duration_seconds":326,"pace_min_per_km":5.567}
+  ]'
 ```
+*(Example: Lap1 1km 5:32 5'32"/km, Lap2 1km 5:45 5'45", ... Lap8 0.98km 5:26 5'34"/km)*
 
 #### Convenience Commands
 ```bash

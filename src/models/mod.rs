@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+use sqlx::types::Json;
 
 #[derive(Debug, FromRow, Serialize, Deserialize)]
 pub struct Exercise {
@@ -34,6 +35,25 @@ pub struct WorkoutExercise {
     pub notes: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+pub struct HeartRateZones {
+    pub z1_seconds: u32,
+    pub z2_seconds: u32,
+    pub z3_seconds: u32,
+    pub z4_seconds: u32,
+    pub z5_seconds: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Lap {
+    pub lap_number: u16,           // 1-based
+    pub distance_km: f64,          // e.g. 1.0 or 0.98 for last lap
+    pub duration_seconds: u32,     // exact seconds for this lap
+    pub pace_min_per_km: f64,      // optional/calculated, stored for convenience
+    // Future-proof fields (add even if not used yet):
+    // pub avg_heart_rate_bpm: Option<u16>,
+}
+
 #[derive(Debug, FromRow, Serialize, Deserialize)]
 pub struct ExerciseSet {
     pub id: i64,
@@ -52,8 +72,9 @@ pub struct ExerciseSet {
     pub extra_metrics: Option<String>,
     pub avg_heart_rate_bpm: Option<f64>,
     pub max_heart_rate_bpm: Option<f64>,
-    pub heart_rate_zones: Option<String>,
+    pub heart_rate_zones: Option<Json<HeartRateZones>>,
     pub avg_pace_min_per_km: Option<f64>,
     pub calories_burned: Option<i32>,
+    pub laps: Option<Json<Vec<Lap>>>,
     pub created_at: Option<String>,
 }

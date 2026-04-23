@@ -1,7 +1,9 @@
 use crate::cli::SetAction;
 use crate::repository::Repository;
 use crate::error::{Result, RepslogError};
-use crate::utils::{print_table, read_stdin};
+use crate::utils::{print_table, read_stdin, format_duration, format_pace};
+use crate::models::Lap;
+use sqlx::types::Json;
 
 pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
     match action {
@@ -21,6 +23,7 @@ pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
             hr_zones,
             pace,
             calories,
+            laps,
         } => {
             let id = if let Some(id) = workout_exercise_id {
                 id
@@ -33,6 +36,10 @@ pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
             // Validation: at least one metric must be provided
             if reps.is_none() && duration.is_none() && distance.is_none() && avg_heart_rate.is_none() {
                 return Err(RepslogError::Cli("At least one metric (reps, duration, distance, or heart rate) must be provided.".into()));
+            }
+
+            if let Some(ref laps_vec) = laps {
+                validate_laps(laps_vec, distance, duration.map(|d| d as u32))?;
             }
 
             let set_number = repo.get_next_set_number(id).await?;
@@ -51,9 +58,10 @@ pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
                 notes.as_deref(),
                 avg_heart_rate,
                 max_heart_rate,
-                hr_zones,
+                hr_zones.map(Json),
                 pace,
                 calories,
+                laps.map(Json),
             ).await?;
             println!("Added set {} to workout-exercise {} with set ID {}", set_number, id, set_id);
         }
@@ -66,6 +74,7 @@ pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
             hr_zones,
             pace,
             calories,
+            laps,
             notes,
         } => {
             let id = if let Some(id) = workout_exercise_id {
@@ -75,6 +84,10 @@ pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
             } else {
                 return Err(RepslogError::Cli("No workout-exercise-id provided. Use --help for examples.".into()));
             };
+
+            if let Some(ref laps_vec) = laps {
+                validate_laps(laps_vec, Some(distance), Some(duration as u32))?;
+            }
 
             let set_number = repo.get_next_set_number(id).await?;
             let set_id = repo.add_set(
@@ -92,9 +105,10 @@ pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
                 notes.as_deref(),
                 Some(avg_heart_rate),
                 Some(max_heart_rate),
-                Some(hr_zones),
+                Some(Json(hr_zones)),
                 Some(pace),
                 Some(calories),
+                laps.map(Json),
             ).await?;
             println!("Added cardio set {} to workout-exercise {} with set ID {}", set_number, id, set_id);
         }
@@ -128,10 +142,6 @@ pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
 
             for (i, ((r, ri), eff)) in reps_list.into_iter().zip(rir_list.into_iter()).zip(eff_list.into_iter()).enumerate() {
                 let set_number = repo.get_next_set_number(id).await?;
-                // First set in cluster has no rest from previous? 
-                // Or maybe we record rest AFTER each set. 
-                // The spec says: 10 dips (rir 0) -> rest 15s -> 5 more.
-                // So the second set has rest_seconds from the first.
                 let rest = if i > 0 { Some(rest_seconds) } else { None };
                 
                 let set_id = repo.add_set(
@@ -152,6 +162,7 @@ pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
                     None,
                     None,
                     None,
+                    None,
                 ).await?;
                 set_ids.push(set_id);
             }
@@ -160,7 +171,7 @@ pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
         SetAction::List { workout_exercise_id } => {
             let sets = repo.list_sets(workout_exercise_id).await?;
             let mut rows = Vec::new();
-            for s in sets {
+            for s in sets.iter() {
                 let cluster_label = if let Some(cid) = s.cluster_id {
                     format!(" [C{}]", cid)
                 } else {
@@ -186,22 +197,79 @@ pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
                     s.distance_km.map(|d| format!("{:.2} km", d)).unwrap_or_default(),
                     s.duration_seconds.map(|d| format!("{}s", d)).unwrap_or_default(),
                     cardio_info,
-                    s.notes.unwrap_or_default(),
+                    s.notes.as_ref().cloned().unwrap_or_default(),
                 ]);
             }
             print_table(vec!["ID", "Set #", "Reps", "Weight", "Dist", "Dur", "Cardio", "Notes"], rows);
+
+            // Show Laps if available
+            for s in sets {
+                if let Some(laps_json) = s.laps {
+                    let laps = laps_json.0;
+                    if !laps.is_empty() {
+                        println!("\nLap Breakdown (Set {}):", s.set_number);
+                        let mut lap_rows = Vec::new();
+                        for lap in laps {
+                            lap_rows.push(vec![
+                                format!("Lap {}", lap.lap_number),
+                                format!("{:.2} km", lap.distance_km),
+                                format_duration(lap.duration_seconds),
+                                format_pace(lap.pace_min_per_km),
+                            ]);
+                        }
+                        print_table(vec!["Lap", "Distance", "Time", "Pace"], lap_rows);
+                    }
+                }
+            }
         }
         SetAction::Quick { workout_id, exercise_name_or_id } => {
             let exercise = repo.find_exercise_by_id_or_name(&exercise_name_or_id).await?;
             if let Some(ex) = exercise {
                 let order = repo.get_max_order_for_workout(workout_id).await? + 1;
                 let we_id = repo.add_workout_exercise(workout_id, ex.id, order, None).await?;
-                let set_id = repo.add_set(we_id, 1, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None).await?;
+                let set_id = repo.add_set(we_id, 1, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None).await?;
                 println!("Added exercise {} to workout {} and created first set with ID {}", ex.name, workout_id, set_id);
             } else {
                 println!("Exercise not found: {}", exercise_name_or_id);
             }
         }
     }
+    Ok(())
+}
+
+fn validate_laps(laps: &[Lap], total_distance: Option<f64>, total_duration_seconds: Option<u32>) -> Result<()> {
+    let mut sum_dist = 0.0;
+    let mut sum_dur = 0;
+    let mut expected_lap = 1;
+
+    for lap in laps {
+        if lap.lap_number != expected_lap {
+            return Err(RepslogError::Cli(format!("Laps must be sequential. Expected lap {}, got {}", expected_lap, lap.lap_number)));
+        }
+        if lap.distance_km <= 0.0 {
+            return Err(RepslogError::Cli(format!("Lap {} distance must be greater than 0", lap.lap_number)));
+        }
+        if lap.duration_seconds == 0 {
+            return Err(RepslogError::Cli(format!("Lap {} duration must be greater than 0", lap.lap_number)));
+        }
+        sum_dist += lap.distance_km;
+        sum_dur += lap.duration_seconds;
+        expected_lap += 1;
+    }
+
+    if let Some(total_d) = total_distance {
+        if (sum_dist - total_d).abs() > total_d * 0.011 { // ~1% allowance
+            eprintln!("Warning: Sum of lap distances ({:.2} km) differs from total distance ({:.2} km) by more than 1%", sum_dist, total_d);
+        }
+    }
+
+    if let Some(total_dur) = total_duration_seconds {
+        if sum_dur != total_dur {
+            if (sum_dur as i32 - total_dur as i32).abs() > 2 {
+                eprintln!("Warning: Sum of lap durations ({}s) differs from total duration ({}s)", sum_dur, total_dur);
+            }
+        }
+    }
+
     Ok(())
 }

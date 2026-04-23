@@ -1,6 +1,7 @@
 use sqlx::sqlite::SqlitePool;
 use sqlx::Row;
-use crate::models::{Exercise, Workout, WorkoutExercise, ExerciseSet};
+use sqlx::types::Json;
+use crate::models::{Exercise, Workout, WorkoutExercise, ExerciseSet, HeartRateZones, Lap};
 use crate::error::Result;
 
 pub struct Repository {
@@ -163,15 +164,16 @@ impl Repository {
         notes: Option<&str>,
         avg_heart_rate: Option<f64>,
         max_heart_rate: Option<f64>,
-        hr_zones: Option<String>,
+        hr_zones: Option<Json<HeartRateZones>>,
         pace: Option<f64>,
         calories: Option<i32>,
+        laps: Option<Json<Vec<Lap>>>,
     ) -> Result<i64> {
         let res = sqlx::query("INSERT INTO exercise_sets (
             workout_exercise_id, set_number, reps, weight_kg, duration_seconds, distance_km, rpe, rir, 
             effective_reps, cluster_id, rest_seconds, notes, avg_heart_rate_bpm, max_heart_rate_bpm, 
-            heart_rate_zones, avg_pace_min_per_km, calories_burned
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+            heart_rate_zones, avg_pace_min_per_km, calories_burned, laps
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
             .bind(workout_exercise_id)
             .bind(set_number)
             .bind(reps)
@@ -189,6 +191,7 @@ impl Repository {
             .bind(hr_zones)
             .bind(pace)
             .bind(calories)
+            .bind(laps)
             .execute(&self.pool)
             .await?;
         Ok(res.last_insert_rowid())
