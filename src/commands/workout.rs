@@ -6,14 +6,12 @@ use crate::utils::print_table;
 pub async fn handle_workout(action: WorkoutAction, repo: &Repository) -> Result<()> {
     match action {
         WorkoutAction::Create { workout_type, notes, date } => {
-            if let Some(ref d) = date {
-                // Try to parse to ensure it's a valid date (YYYY-MM-DD)
-                if chrono::NaiveDate::parse_from_str(d, "%Y-%m-%d").is_err() && 
-                   chrono::NaiveDateTime::parse_from_str(d, "%Y-%m-%d %H:%M:%S").is_err() {
-                    return Err(crate::error::RepslogError::Cli("Invalid date format. Use YYYY-MM-DD or 'YYYY-MM-DD HH:MM:SS'".to_string()));
-                }
+            // Try to parse to ensure it's a valid date (YYYY-MM-DD)
+            if chrono::NaiveDate::parse_from_str(&date, "%Y-%m-%d").is_err() && 
+               chrono::NaiveDateTime::parse_from_str(&date, "%Y-%m-%d %H:%M:%S").is_err() {
+                return Err(crate::error::RepslogError::Cli("Invalid date format. Use YYYY-MM-DD or 'YYYY-MM-DD HH:MM:SS'".to_string()));
             }
-            let id = repo.create_workout(workout_type.as_deref(), notes.as_deref(), date.as_deref()).await?;
+            let id = repo.create_workout(workout_type.as_deref(), notes.as_deref(), Some(&date)).await?;
             println!("Created workout with ID {}", id);
         }
         WorkoutAction::List { limit, days } => {

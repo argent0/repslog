@@ -29,11 +29,8 @@ repslog exercise add "Muscle Up" --category calisthenics --equipment bodyweight 
 
 ### 3. Start a Workout
 ```bash
-# Start a workout for right now
-repslog workout create --type "Push" --notes "Feeling strong today"
-
-# Start a workout for a specific date (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS)
-repslog workout create --type "Pull" --date "2023-10-25"
+# Start a workout (date is mandatory: YYYY-MM-DD or YYYY-MM-DD HH:MM:SS)
+repslog workout create --date "2023-10-25" --type "Push" --notes "Feeling strong today"
 
 repslog workout current
 ```

@@ -81,7 +81,7 @@ pub enum WorkoutAction {
         #[arg(short, long)]
         notes: Option<String>,
         #[arg(short, long)]
-        date: Option<String>,
+        date: String,
     },
     /// List workouts
     List {
