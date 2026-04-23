@@ -147,8 +147,31 @@ impl Repository {
     }
 
     // --- Sets ---
-    pub async fn add_set(&self, workout_exercise_id: i64, set_number: i32, reps: Option<i32>, weight: Option<f64>, duration: Option<i32>, distance: Option<f64>, rpe: Option<f64>, rir: Option<f64>, effective_reps: Option<i32>, cluster_id: Option<i64>, rest_seconds: Option<i32>, notes: Option<&str>) -> Result<i64> {
-        let res = sqlx::query("INSERT INTO exercise_sets (workout_exercise_id, set_number, reps, weight_kg, duration_seconds, distance_km, rpe, rir, effective_reps, cluster_id, rest_seconds, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+    pub async fn add_set(
+        &self, 
+        workout_exercise_id: i64, 
+        set_number: i32, 
+        reps: Option<i32>, 
+        weight: Option<f64>, 
+        duration: Option<i32>, 
+        distance: Option<f64>, 
+        rpe: Option<f64>, 
+        rir: Option<f64>, 
+        effective_reps: Option<i32>, 
+        cluster_id: Option<i64>, 
+        rest_seconds: Option<i32>, 
+        notes: Option<&str>,
+        avg_heart_rate: Option<f64>,
+        max_heart_rate: Option<f64>,
+        hr_zones: Option<String>,
+        pace: Option<f64>,
+        calories: Option<i32>,
+    ) -> Result<i64> {
+        let res = sqlx::query("INSERT INTO exercise_sets (
+            workout_exercise_id, set_number, reps, weight_kg, duration_seconds, distance_km, rpe, rir, 
+            effective_reps, cluster_id, rest_seconds, notes, avg_heart_rate_bpm, max_heart_rate_bpm, 
+            heart_rate_zones, avg_pace_min_per_km, calories_burned
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
             .bind(workout_exercise_id)
             .bind(set_number)
             .bind(reps)
@@ -161,6 +184,11 @@ impl Repository {
             .bind(cluster_id)
             .bind(rest_seconds)
             .bind(notes)
+            .bind(avg_heart_rate)
+            .bind(max_heart_rate)
+            .bind(hr_zones)
+            .bind(pace)
+            .bind(calories)
             .execute(&self.pool)
             .await?;
         Ok(res.last_insert_rowid())

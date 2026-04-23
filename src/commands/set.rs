@@ -15,7 +15,12 @@ pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
             rir, 
             effective_reps, 
             rest_seconds,
-            notes 
+            notes,
+            avg_heart_rate,
+            max_heart_rate,
+            hr_zones,
+            pace,
+            calories,
         } => {
             let id = if let Some(id) = workout_exercise_id {
                 id
@@ -26,13 +31,10 @@ pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
             };
             
             // Validation: at least one metric must be provided
-            if reps.is_none() && duration.is_none() && distance.is_none() {
-                return Err(RepslogError::Cli("At least one metric (reps, duration, or distance) must be provided.".into()));
+            if reps.is_none() && duration.is_none() && distance.is_none() && avg_heart_rate.is_none() {
+                return Err(RepslogError::Cli("At least one metric (reps, duration, distance, or heart rate) must be provided.".into()));
             }
 
-            // Note: weight_kg, rir, effective_reps are also meaningful and should be explicit if used.
-            // The spec says "Never use defaults". We already use Option, which is good.
-            
             let set_number = repo.get_next_set_number(id).await?;
             let set_id = repo.add_set(
                 id, 
@@ -46,9 +48,55 @@ pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
                 effective_reps, 
                 None, // cluster_id
                 rest_seconds,
-                notes.as_deref()
+                notes.as_deref(),
+                avg_heart_rate,
+                max_heart_rate,
+                hr_zones,
+                pace,
+                calories,
             ).await?;
             println!("Added set {} to workout-exercise {} with set ID {}", set_number, id, set_id);
+        }
+        SetAction::AddCardio {
+            workout_exercise_id,
+            distance,
+            duration,
+            avg_heart_rate,
+            max_heart_rate,
+            hr_zones,
+            pace,
+            calories,
+            notes,
+        } => {
+            let id = if let Some(id) = workout_exercise_id {
+                id
+            } else if let Some(stdin_id) = read_stdin() {
+                stdin_id.parse::<i64>().unwrap_or_else(|_| 0)
+            } else {
+                return Err(RepslogError::Cli("No workout-exercise-id provided. Use --help for examples.".into()));
+            };
+
+            let set_number = repo.get_next_set_number(id).await?;
+            let set_id = repo.add_set(
+                id,
+                set_number,
+                None, // reps
+                None, // weight
+                Some(duration),
+                Some(distance),
+                None, // rpe
+                None, // rir
+                None, // effective_reps
+                None, // cluster_id
+                None, // rest_seconds
+                notes.as_deref(),
+                Some(avg_heart_rate),
+                Some(max_heart_rate),
+                Some(hr_zones),
+                Some(pace),
+                Some(calories),
+            ).await?;
+            println!("Added cardio set {} to workout-exercise {} with set ID {}", set_number, id, set_id);
         }
         SetAction::AddCluster {
             workout_exercise_id,
@@ -99,6 +147,11 @@ pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
                     Some(cluster_id),
                     rest,
                     notes.as_deref(),
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
                 ).await?;
                 set_ids.push(set_id);
             }
@@ -114,26 +167,36 @@ pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
                     "".to_string()
                 };
                 
+                let cardio_info = if s.avg_heart_rate_bpm.is_some() {
+                    format!("HR: {}/{} bpm | Pace: {} | Cal: {}", 
+                        s.avg_heart_rate_bpm.map(|v| v.to_string()).unwrap_or_default(),
+                        s.max_heart_rate_bpm.map(|v| v.to_string()).unwrap_or_default(),
+                        s.avg_pace_min_per_km.map(|v| v.to_string()).unwrap_or_default(),
+                        s.calories_burned.map(|v| v.to_string()).unwrap_or_default()
+                    )
+                } else {
+                    "".to_string()
+                };
+
                 rows.push(vec![
                     s.id.to_string(),
                     format!("{}{}", s.set_number, cluster_label),
                     s.reps.map(|r| r.to_string()).unwrap_or_default(),
                     s.weight_kg.map(|w| format!("{:.2} kg", w)).unwrap_or_default(),
-                    s.rir.map(|r| format!("{:.1}", r)).unwrap_or_default(),
-                    s.effective_reps.map(|r| r.to_string()).unwrap_or_default(),
-                    s.rest_seconds.map(|r| format!("{}s", r)).unwrap_or_default(),
-                    s.rpe.map(|r| r.to_string()).unwrap_or_default(),
+                    s.distance_km.map(|d| format!("{:.2} km", d)).unwrap_or_default(),
+                    s.duration_seconds.map(|d| format!("{}s", d)).unwrap_or_default(),
+                    cardio_info,
                     s.notes.unwrap_or_default(),
                 ]);
             }
-            print_table(vec!["ID", "Set #", "Reps", "Weight", "RIR", "Eff Reps", "Rest", "RPE", "Notes"], rows);
+            print_table(vec!["ID", "Set #", "Reps", "Weight", "Dist", "Dur", "Cardio", "Notes"], rows);
         }
         SetAction::Quick { workout_id, exercise_name_or_id } => {
             let exercise = repo.find_exercise_by_id_or_name(&exercise_name_or_id).await?;
             if let Some(ex) = exercise {
                 let order = repo.get_max_order_for_workout(workout_id).await? + 1;
                 let we_id = repo.add_workout_exercise(workout_id, ex.id, order, None).await?;
-                let set_id = repo.add_set(we_id, 1, None, None, None, None, None, None, None, None, None, None).await?;
+                let set_id = repo.add_set(we_id, 1, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None).await?;
                 println!("Added exercise {} to workout {} and created first set with ID {}", ex.name, workout_id, set_id);
             } else {
                 println!("Exercise not found: {}", exercise_name_or_id);

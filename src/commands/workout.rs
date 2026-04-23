@@ -52,17 +52,29 @@ pub async fn handle_workout(action: WorkoutAction, repo: &Repository) -> Result<
                         } else {
                             "".to_string()
                         };
+
+                        let cardio_info = if s.avg_heart_rate_bpm.is_some() {
+                            format!("HR: {}/{} | Pace: {} | Cal: {}", 
+                                s.avg_heart_rate_bpm.map(|v| v.to_string()).unwrap_or_default(),
+                                s.max_heart_rate_bpm.map(|v| v.to_string()).unwrap_or_default(),
+                                s.avg_pace_min_per_km.map(|v| v.to_string()).unwrap_or_default(),
+                                s.calories_burned.map(|v| v.to_string()).unwrap_or_default()
+                            )
+                        } else {
+                            "".to_string()
+                        };
+
                         set_rows.push(vec![
                             s.set_number.to_string() + &cluster_label,
                             s.reps.map(|r| r.to_string()).unwrap_or_default(),
                             s.weight_kg.map(|w| format!("{:.2} kg", w)).unwrap_or_default(),
-                            s.rir.map(|r| format!("{:.1}", r)).unwrap_or_default(),
-                            s.effective_reps.map(|r| r.to_string()).unwrap_or_default(),
-                            s.rest_seconds.map(|r| format!("{}s", r)).unwrap_or_default(),
+                            s.distance_km.map(|d| format!("{:.2} km", d)).unwrap_or_default(),
+                            s.duration_seconds.map(|d| format!("{}s", d)).unwrap_or_default(),
+                            cardio_info,
                             s.notes.unwrap_or_default(),
                         ]);
                     }
-                    print_table(vec!["Set #", "Reps", "Weight", "RIR", "Eff Reps", "Rest", "Notes"], set_rows);
+                    print_table(vec!["Set #", "Reps", "Weight", "Dist", "Dur", "Cardio", "Notes"], set_rows);
                 }
             } else {
                 println!("Workout not found");

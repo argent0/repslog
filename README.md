@@ -44,6 +44,16 @@ repslog workout-exercise add <workout_id> "Pushups"
 ```bash
 # Add a set with 15 reps and 7.5 RPE
 repslog set add <workout_exercise_id> --reps 15 --rpe 7.5
+
+# Add a cardio set (Running)
+repslog set add-cardio <workout_exercise_id> \
+  --distance 5.0 \
+  --duration 1500 \
+  --avg-heart-rate 152 \
+  --max-heart-rate 178 \
+  --pace 5.0 \
+  --calories 450 \
+  --hr-zones '{"z1": 60, "z2": 1200, "z3": 240}'
 ```
 
 ### 6. Finish Workout

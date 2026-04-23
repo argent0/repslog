@@ -50,5 +50,10 @@ pub struct ExerciseSet {
     pub rest_seconds: Option<i32>,
     pub notes: Option<String>,
     pub extra_metrics: Option<String>,
+    pub avg_heart_rate_bpm: Option<f64>,
+    pub max_heart_rate_bpm: Option<f64>,
+    pub heart_rate_zones: Option<String>,
+    pub avg_pace_min_per_km: Option<f64>,
+    pub calories_burned: Option<i32>,
     pub created_at: Option<String>,
 }

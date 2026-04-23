@@ -158,6 +158,43 @@ pub enum SetAction {
         rest_seconds: Option<i32>,
         #[arg(short, long)]
         notes: Option<String>,
+        /// Average heart rate in bpm
+        #[arg(long = "avg-heart-rate")]
+        avg_heart_rate: Option<f64>,
+        /// Maximum heart rate in bpm
+        #[arg(long = "max-heart-rate")]
+        max_heart_rate: Option<f64>,
+        /// Heart rate zones JSON (e.g. '{"z1": 60, "z2": 300, ...}')
+        #[arg(long = "hr-zones")]
+        hr_zones: Option<String>,
+        /// Average pace in min/km (e.g. 5.5)
+        #[arg(long)]
+        pace: Option<f64>,
+        /// Calories burned
+        #[arg(long)]
+        calories: Option<i32>,
+    },
+    /// Add a cardio set with mandatory heart rate and pace metrics.
+    /// Example: repslog set add-cardio 1 --distance 5.0 --duration 1500 --avg-heart-rate 155 --max-heart-rate 180 --pace 5.0 --calories 450 --hr-zones '{"z1_seconds": 60, "z2_seconds": 1200, "z3_seconds": 240}'
+    #[command(name = "add-cardio")]
+    AddCardio {
+        workout_exercise_id: Option<i64>,
+        #[arg(long)]
+        distance: f64,
+        #[arg(short, long)]
+        duration: i32,
+        #[arg(long = "avg-heart-rate")]
+        avg_heart_rate: f64,
+        #[arg(long = "max-heart-rate")]
+        max_heart_rate: f64,
+        #[arg(long = "hr-zones")]
+        hr_zones: String,
+        #[arg(long)]
+        pace: f64,
+        #[arg(long)]
+        calories: i32,
+        #[arg(short, long)]
+        notes: Option<String>,
     },
     /// Add a rest-pause/cluster set sequence.
     /// Example: repslog set add-cluster 1 --reps "10,5,5" --weight 100 --rir "0,0,1" --effective-reps "6,4,3" --rest 15
