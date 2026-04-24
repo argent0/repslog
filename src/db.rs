@@ -3,8 +3,6 @@ use sqlx::Executor;
 use crate::error::{Result, RepslogError};
 use crate::config::get_db_url;
 use std::str::FromStr;
-use std::path::Path;
-use std::fs;
 use serde::Serialize;
 
 #[derive(Debug, Serialize, Clone)]
@@ -65,27 +63,16 @@ pub async fn get_current_version(pool: &SqlitePool) -> Result<i32> {
 }
 
 pub fn get_all_migrations() -> Result<Vec<Migration>> {
-    let migrations_dir = Path::new("migrations");
-    if !migrations_dir.exists() {
-        return Ok(vec![]);
-    }
-
+    let migrator = sqlx::migrate!("./migrations");
+    
     let mut migrations = Vec::new();
-    for entry in fs::read_dir(migrations_dir)? {
-        let entry = entry?;
-        let path = entry.path();
-        if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("sql") {
-            let filename = path.file_name().and_then(|s| s.to_str()).unwrap();
-            let parts: Vec<&str> = filename.split('_').collect();
-            if let Ok(version) = parts[0].parse::<i32>() {
-                let sql = fs::read_to_string(&path)?;
-                migrations.push(Migration {
-                    version,
-                    name: filename.to_string(),
-                    sql,
-                });
-            }
-        }
+    for m in migrator.migrations.iter() {
+        // sqlx migrations have i64 version, our Migration has i32
+        migrations.push(Migration {
+            version: m.version as i32,
+            name: m.description.to_string(),
+            sql: m.sql.to_string(),
+        });
     }
 
     migrations.sort_by_key(|m| m.version);
