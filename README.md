@@ -7,7 +7,7 @@ A Linux-first command-line workout tracker designed for flexibility across stren
 - **Cardio First-Class Support:** Detailed tracking for runs (heart rate zones, pace, calories, and structured laps/splits).
 - **Advanced Strength Training:** Support for RPE, RIR, Effective Reps, and Rest-Pause/Cluster sets.
 - **Scriptable:** Non-interactive friendly; supports reading IDs from `stdin`.
-- **Beautiful Output:** Color-coded tabular views using `comfy-table`.
+- **Beautiful Output:** Color-coded tabular views using `comfy-table` with dedicated, runner-friendly displays for cardio workouts including visual HR zone bars and lap breakdowns.
 
 ## Installation
 ```bash
@@ -40,10 +40,12 @@ Workouts are the top-level containers for your training.
 # Create a new workout (date is mandatory: YYYY-MM-DD)
 repslog workout create --type "Legs" --date "2026-04-23" --notes "Focus on form"
 
-# List recent workouts
+# List recent workouts (now includes automated cardio summaries!)
 repslog workout list --days 7
 
-# View full details of a workout (including exercises and sets)
+# View full details of a workout
+# Pure strength workouts show sets/reps, while cardio workouts get a 
+# dedicated summary section with pace, HR zones, and laps.
 repslog workout view 1
 ```
 
@@ -94,6 +96,13 @@ repslog set add-cardio <we_id> \
 # Quick: Add exercise and first set in one command
 repslog set quick 1 "Pushups"
 ```
+
+**New: Beautiful Cardio Display**
+When you view a cardio workout, repslog now provides a high-signal summary:
+- **Aggregated Totals:** Distance, Time, Pace, Avg/Max HR, and Calories.
+- **Visual HR Zones:** A color-coded bar (Cyan/Green/Yellow/Magenta/Red) showing distribution across Z1-Z5 with percentages.
+- **Lap Table:** Clear breakdown of every split with distance, time, and pace.
+
 ### 6. Updating & Stats
 ```bash
 # Update workout details like duration, feeling (1-5), or notes anytime
