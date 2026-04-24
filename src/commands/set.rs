@@ -38,8 +38,8 @@ pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
                 return Err(RepslogError::Cli("At least one metric (reps, duration, distance, or heart rate) must be provided.".into()));
             }
 
-            if let Some(ref laps_vec) = laps {
-                validate_laps(laps_vec, distance, duration.map(|d| d as u32))?;
+            if let Some(ref laps_wrapper) = laps {
+                validate_laps(&laps_wrapper.0, distance, duration.map(|d| d as u32))?;
             }
 
             let set_number = repo.get_next_set_number(id).await?;
@@ -61,7 +61,7 @@ pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
                 hr_zones.map(Json),
                 pace,
                 calories,
-                laps.map(Json),
+                laps.map(|l| Json(l.0)),
             ).await?;
             println!("Added set {} to workout-exercise {} with set ID {}", set_number, id, set_id);
         }
@@ -85,8 +85,8 @@ pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
                 return Err(RepslogError::Cli("No workout-exercise-id provided. Use --help for examples.".into()));
             };
 
-            if let Some(ref laps_vec) = laps {
-                validate_laps(laps_vec, Some(distance), Some(duration as u32))?;
+            if let Some(ref laps_wrapper) = laps {
+                validate_laps(&laps_wrapper.0, Some(distance), Some(duration as u32))?;
             }
 
             let set_number = repo.get_next_set_number(id).await?;
@@ -108,7 +108,7 @@ pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
                 Some(Json(hr_zones)),
                 Some(pace),
                 Some(calories),
-                laps.map(Json),
+                laps.map(|l| Json(l.0)),
             ).await?;
             println!("Added cardio set {} to workout-exercise {} with set ID {}", set_number, id, set_id);
         }

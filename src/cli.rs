@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use crate::models::{HeartRateZones, Lap};
+use crate::models::{HeartRateZones, Laps};
 
 #[derive(Parser)]
 #[command(name = "repslog")]
@@ -182,8 +182,8 @@ pub enum SetAction {
         #[arg(long)]
         calories: Option<i32>,
         /// Laps JSON (e.g. '[{"lap_number":1,"distance_km":1.0,"duration_seconds":332,"pace_min_per_km":5.533}, ...]')
-        #[arg(long, value_parser = |s: &str| serde_json::from_str::<Vec<Lap>>(s).map_err(|e| e.to_string()))]
-        laps: Option<Vec<Lap>>,
+        #[arg(long, value_parser = |s: &str| serde_json::from_str::<Laps>(s).map_err(|e| e.to_string()))]
+        laps: Option<Laps>,
     },
     /// Add a cardio set with mandatory heart rate and pace metrics.
     /// Example: repslog set add-cardio 1 --distance 5.0 --duration 1500 --avg-heart-rate 155 --max-heart-rate 180 --pace 5.0 --calories 450 --hr-zones '{"z1_seconds": 60, "z2_seconds": 1200, "z3_seconds": 240}' --laps '[{"km": 1, "time": "5:32", "pace": "5:32"}]'
@@ -204,8 +204,8 @@ pub enum SetAction {
         pace: f64,
         #[arg(long)]
         calories: i32,
-        #[arg(long, value_parser = |s: &str| serde_json::from_str::<Vec<Lap>>(s).map_err(|e| e.to_string()))]
-        laps: Option<Vec<Lap>>,
+        #[arg(long, value_parser = |s: &str| serde_json::from_str::<Laps>(s).map_err(|e| e.to_string()))]
+        laps: Option<Laps>,
         #[arg(short, long)]
         notes: Option<String>,
     },

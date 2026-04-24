@@ -36,10 +36,15 @@ pub struct WorkoutExercise {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 pub struct HeartRateZones {
+    #[serde(default)]
     pub z1_seconds: u32,
+    #[serde(default)]
     pub z2_seconds: u32,
+    #[serde(default)]
     pub z3_seconds: u32,
+    #[serde(default)]
     pub z4_seconds: u32,
+    #[serde(default)]
     pub z5_seconds: u32,
 }
 
@@ -52,6 +57,9 @@ pub struct Lap {
     // Future-proof fields (add even if not used yet):
     // pub avg_heart_rate_bpm: Option<u16>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct Laps(pub Vec<Lap>);
 
 #[derive(Debug, FromRow, Serialize, Deserialize)]
 pub struct ExerciseSet {
