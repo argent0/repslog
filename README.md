@@ -16,6 +16,8 @@ cargo install --path .
 
 ## Usage Guide
 
+All commands that modify the database support a `--dry-run` flag to preview changes without applying them.
+
 ### 1. Initialize
 Sets up the database and seeds default exercises.
 ```bash

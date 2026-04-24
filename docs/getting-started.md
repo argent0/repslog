@@ -23,6 +23,11 @@ Before using `repslog`, you need to initialize the database. This command create
 repslog init
 ```
 
+You can use `--dry-run` to see what would be initialized without actually creating the database:
+```bash
+repslog init --dry-run
+```
+
 ### Data Location
 
 By default, `repslog` follows the XDG Base Directory Specification:
@@ -51,4 +56,9 @@ To check the status of migrations:
 
 ```bash
 repslog migrate --status
+```
+
+To see which migrations would be applied without applying them:
+```bash
+repslog migrate --dry-run
 ```

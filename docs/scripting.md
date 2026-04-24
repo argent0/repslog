@@ -52,3 +52,18 @@ if ! repslog workout create --date "invalid-date"; then
   exit 1
 fi
 ```
+
+## Dry Run Mode
+
+Mutation commands support a `--dry-run` flag. This is useful for testing scripts without modifying the database. 
+
+When `--dry-run` is used:
+1. Arguments and logic are fully validated.
+2. The database is **not** modified.
+3. The command outputs a placeholder ID in the format `DRY-RUN-N` (e.g., `DRY-RUN-10`), where `N` is the next expected ID.
+
+This allows you to test full pipelines:
+```bash
+# Test a pipeline without making any changes
+repslog workout create --dry-run --date "2026-04-24" | xargs -I {} repslog workout-exercise add {} "Pushups" --dry-run
+```
