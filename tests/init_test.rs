@@ -7,7 +7,7 @@ async fn test_handle_init() {
     let pool = setup_test_db().await.unwrap();
     
     // Initializing with handle_init
-    handle_init(&pool).await.unwrap();
+    handle_init(&pool, false).await.unwrap();
     
     let repo = Repository::new(pool);
     let exercises = repo.list_exercises(None, None).await.unwrap();

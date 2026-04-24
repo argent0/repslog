@@ -3,9 +3,11 @@ use crate::error::Result;
 use crate::db::run_migrations;
 use sqlx::sqlite::SqlitePool;
 
-pub async fn handle_init(pool: &SqlitePool) -> Result<()> {
+pub async fn handle_init(pool: &SqlitePool, dry_run: bool) -> Result<()> {
     println!("Initializing database...");
-    run_migrations(pool, false).await?;
+    if !dry_run {
+        run_migrations(pool, false).await?;
+    }
     
     let repo = Repository::new(pool.clone());
     
@@ -26,7 +28,7 @@ pub async fn handle_init(pool: &SqlitePool) -> Result<()> {
     for (name, category, muscles, equipment, desc) in default_exercises {
         let existing = repo.list_exercises(Some(name.to_string()), None).await?;
         if existing.is_empty() {
-            repo.add_exercise(name, category, muscles, equipment, desc, false).await?;
+            repo.add_exercise(name, category, muscles, equipment, desc, false, dry_run).await?;
             println!("Added exercise: {}", name);
         }
     }

@@ -55,7 +55,11 @@ pub enum Commands {
         force: bool,
     },
     /// Initialize database and seed default exercises
-    Init,
+    Init {
+        /// Show what would be initialized (no changes)
+        #[arg(long)]
+        dry_run: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -78,6 +82,9 @@ pub enum ExerciseAction {
         muscles: Option<String>,
         #[arg(short, long)]
         description: Option<String>,
+        /// Show what would be added (no changes)
+        #[arg(long)]
+        dry_run: bool,
     },
     /// Search for exercises
     Search {
@@ -95,6 +102,9 @@ pub enum WorkoutAction {
         notes: Option<String>,
         #[arg(short, long)]
         date: String,
+        /// Show what would be created (no changes)
+        #[arg(long)]
+        dry_run: bool,
     },
     /// List workouts
     List {
@@ -109,7 +119,7 @@ pub enum WorkoutAction {
     },
     /// Update a workout
     Update {
-        workout_id: i64,
+        workout_id: String,
         #[arg(short, long = "type")]
         workout_type: Option<String>,
         #[arg(short, long)]
@@ -120,10 +130,16 @@ pub enum WorkoutAction {
         feeling: Option<i32>,
         #[arg(short, long)]
         date: Option<String>,
+        /// Show what would be updated (no changes)
+        #[arg(long)]
+        dry_run: bool,
     },
     /// Delete a workout
     Delete {
-        workout_id: i64,
+        workout_id: String,
+        /// Show what would be deleted (no changes)
+        #[arg(long)]
+        dry_run: bool,
     },
 }
 
@@ -131,10 +147,13 @@ pub enum WorkoutAction {
 pub enum WorkoutExerciseAction {
     /// Add an exercise to a workout
     Add {
-        workout_id: i64,
+        workout_id: String,
         exercise_id_or_name: String,
         #[arg(short, long)]
         order: Option<i32>,
+        /// Show what would be added (no changes)
+        #[arg(long)]
+        dry_run: bool,
     },
     /// List exercises in a workout
     List {
@@ -147,7 +166,7 @@ pub enum SetAction {
     /// Add a set to a workout exercise.
     /// Example: repslog set add 1 --reps 10 --weight 60 --rir 0.0 --effective-reps 5
     Add {
-        workout_exercise_id: Option<i64>,
+        workout_exercise_id: Option<String>,
         #[arg(short, long)]
         reps: Option<i32>,
         #[arg(short, long)]
@@ -184,12 +203,15 @@ pub enum SetAction {
         /// Laps JSON (e.g. '[{"lap_number":1,"distance_km":1.0,"duration_seconds":332,"pace_min_per_km":5.533}, ...]')
         #[arg(long, value_parser = |s: &str| serde_json::from_str::<Laps>(s).map_err(|e| e.to_string()))]
         laps: Option<Laps>,
+        /// Show what would be added (no changes)
+        #[arg(long)]
+        dry_run: bool,
     },
     /// Add a cardio set with mandatory heart rate and pace metrics.
     /// Example: repslog set add-cardio 1 --distance 5.0 --duration 1500 --avg-heart-rate 155 --max-heart-rate 180 --pace 5.0 --calories 450 --hr-zones '{"z1_seconds": 60, "z2_seconds": 1200, "z3_seconds": 240}' --laps '[{"km": 1, "time": "5:32", "pace": "5:32"}]'
     #[command(name = "add-cardio")]
     AddCardio {
-        workout_exercise_id: Option<i64>,
+        workout_exercise_id: Option<String>,
         #[arg(long)]
         distance: f64,
         #[arg(short, long)]
@@ -208,12 +230,15 @@ pub enum SetAction {
         laps: Option<Laps>,
         #[arg(short, long)]
         notes: Option<String>,
+        /// Show what would be added (no changes)
+        #[arg(long)]
+        dry_run: bool,
     },
     /// Add a rest-pause/cluster set sequence.
     /// Example: repslog set add-cluster 1 --reps "10,5,5" --weight 100 --rir "0,0,1" --effective-reps "6,4,3" --rest 15
     #[command(name = "add-cluster")]
     AddCluster {
-        workout_exercise_id: Option<i64>,
+        workout_exercise_id: Option<String>,
         #[arg(short, long)]
         weight: Option<f64>,
         /// Reps for each cluster separated by commas (e.g. "10,5,5")
@@ -230,6 +255,9 @@ pub enum SetAction {
         rest_seconds: i32,
         #[arg(short, long)]
         notes: Option<String>,
+        /// Show what would be added (no changes)
+        #[arg(long)]
+        dry_run: bool,
     },
     /// List sets for a workout exercise
     List {
@@ -237,8 +265,11 @@ pub enum SetAction {
     },
     /// Convenience: add exercise + first set in one go
     Quick {
-        workout_id: i64,
+        workout_id: String,
         exercise_name_or_id: String,
+        /// Show what would be added (no changes)
+        #[arg(long)]
+        dry_run: bool,
     },
 }
 

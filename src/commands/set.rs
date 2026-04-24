@@ -1,7 +1,7 @@
 use crate::cli::SetAction;
 use crate::repository::Repository;
 use crate::error::{Result, RepslogError};
-use crate::utils::{print_table, read_stdin, format_duration, format_pace};
+use crate::utils::{print_table, read_stdin, format_duration, format_pace, format_dry_run_id, parse_id};
 use crate::models::Lap;
 use sqlx::types::Json;
 
@@ -24,14 +24,16 @@ pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
             pace,
             calories,
             laps,
+            dry_run,
         } => {
-            let id = if let Some(id) = workout_exercise_id {
+            let id_str = if let Some(id) = workout_exercise_id {
                 id
             } else if let Some(stdin_id) = read_stdin() {
-                stdin_id.parse::<i64>().unwrap_or_else(|_| 0)
+                stdin_id
             } else {
                 return Err(RepslogError::Cli("No workout-exercise-id provided. Use --help for examples.".into()));
             };
+            let id = parse_id(&id_str, dry_run)?;
             
             // Validation: at least one metric must be provided
             if reps.is_none() && duration.is_none() && distance.is_none() && avg_heart_rate.is_none() {
@@ -42,7 +44,12 @@ pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
                 validate_laps(&laps_wrapper.0, distance, duration.map(|d| d as u32))?;
             }
 
-            let set_number = repo.get_next_set_number(id).await?;
+            let set_number = if dry_run && id_str.starts_with("DRY-RUN-") {
+                1 // If it's a dry-run workout exercise, start with set 1
+            } else {
+                repo.get_next_set_number(id).await?
+            };
+            
             let set_id = repo.add_set(
                 id, 
                 set_number, 
@@ -62,9 +69,11 @@ pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
                 pace,
                 calories,
                 laps.map(|l| Json(l.0)),
+                dry_run,
             ).await?;
-            eprintln!("Added set {} to workout-exercise {} with set ID {}", set_number, id, set_id);
-            println!("{}", set_id);
+            let formatted_set_id = format_dry_run_id(set_id, dry_run);
+            eprintln!("Added set {} to workout-exercise {} with set ID {}", set_number, id_str, formatted_set_id);
+            println!("{}", formatted_set_id);
         }
         SetAction::AddCardio {
             workout_exercise_id,
@@ -77,20 +86,27 @@ pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
             calories,
             laps,
             notes,
+            dry_run,
         } => {
-            let id = if let Some(id) = workout_exercise_id {
+            let id_str = if let Some(id) = workout_exercise_id {
                 id
             } else if let Some(stdin_id) = read_stdin() {
-                stdin_id.parse::<i64>().unwrap_or_else(|_| 0)
+                stdin_id
             } else {
                 return Err(RepslogError::Cli("No workout-exercise-id provided. Use --help for examples.".into()));
             };
+            let id = parse_id(&id_str, dry_run)?;
 
             if let Some(ref laps_wrapper) = laps {
                 validate_laps(&laps_wrapper.0, Some(distance), Some(duration as u32))?;
             }
 
-            let set_number = repo.get_next_set_number(id).await?;
+            let set_number = if dry_run && id_str.starts_with("DRY-RUN-") {
+                1
+            } else {
+                repo.get_next_set_number(id).await?
+            };
+
             let set_id = repo.add_set(
                 id,
                 set_number,
@@ -110,9 +126,11 @@ pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
                 Some(pace),
                 Some(calories),
                 laps.map(|l| Json(l.0)),
+                dry_run,
             ).await?;
-            eprintln!("Added cardio set {} to workout-exercise {} with set ID {}", set_number, id, set_id);
-            println!("{}", set_id);
+            let formatted_set_id = format_dry_run_id(set_id, dry_run);
+            eprintln!("Added cardio set {} to workout-exercise {} with set ID {}", set_number, id_str, formatted_set_id);
+            println!("{}", formatted_set_id);
         }
         SetAction::AddCluster {
             workout_exercise_id,
@@ -122,14 +140,16 @@ pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
             effective_reps,
             rest_seconds,
             notes,
+            dry_run,
         } => {
-            let id = if let Some(id) = workout_exercise_id {
+            let id_str = if let Some(id) = workout_exercise_id {
                 id
             } else if let Some(stdin_id) = read_stdin() {
-                stdin_id.parse::<i64>().unwrap_or_else(|_| 0)
+                stdin_id
             } else {
                 return Err(RepslogError::Cli("No workout-exercise-id provided. Use --help for examples.".into()));
             };
+            let id = parse_id(&id_str, dry_run)?;
 
             let reps_list: Vec<i32> = reps.split(',').map(|s| s.trim().parse().map_err(|_| RepslogError::Cli(format!("Invalid reps: {}", s)))).collect::<Result<_>>()?;
             let rir_list: Vec<f64> = rir.split(',').map(|s| s.trim().parse().map_err(|_| RepslogError::Cli(format!("Invalid rir: {}", s)))).collect::<Result<_>>()?;
@@ -143,7 +163,11 @@ pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
             let mut set_ids = Vec::new();
 
             for (i, ((r, ri), eff)) in reps_list.into_iter().zip(rir_list.into_iter()).zip(eff_list.into_iter()).enumerate() {
-                let set_number = repo.get_next_set_number(id).await?;
+                let set_number = if dry_run && id_str.starts_with("DRY-RUN-") {
+                    (i + 1) as i32
+                } else {
+                    repo.get_next_set_number(id).await?
+                };
                 let rest = if i > 0 { Some(rest_seconds) } else { None };
                 
                 let set_id = repo.add_set(
@@ -165,11 +189,13 @@ pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
                     None,
                     None,
                     None,
+                    dry_run,
                 ).await?;
-                set_ids.push(set_id);
+                set_ids.push(format_dry_run_id(set_id, dry_run));
             }
-            eprintln!("Added cluster {} with {} sets to workout-exercise {}. Set IDs: {:?}", cluster_id, set_ids.len(), id, set_ids);
-            println!("{}", cluster_id);
+            let formatted_cluster_id = format_dry_run_id(cluster_id, dry_run);
+            eprintln!("Added cluster {} with {} sets to workout-exercise {}. Set IDs: {:?}", formatted_cluster_id, set_ids.len(), id_str, set_ids);
+            println!("{}", formatted_cluster_id);
         }
         SetAction::List { workout_exercise_id } => {
             let sets = repo.list_sets(workout_exercise_id).await?;
@@ -225,13 +251,19 @@ pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
                 }
             }
         }
-        SetAction::Quick { workout_id, exercise_name_or_id } => {
+        SetAction::Quick { workout_id, exercise_name_or_id, dry_run } => {
+            let w_id = parse_id(&workout_id, dry_run)?;
             let exercise = repo.find_exercise_by_id_or_name(&exercise_name_or_id).await?;
             if let Some(ex) = exercise {
-                let order = repo.get_max_order_for_workout(workout_id).await? + 1;
-                let we_id = repo.add_workout_exercise(workout_id, ex.id, order, None).await?;
-                let set_id = repo.add_set(we_id, 1, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None).await?;
-                println!("Added exercise {} to workout {} and created first set with ID {}", ex.name, workout_id, set_id);
+                let order = if dry_run && workout_id.starts_with("DRY-RUN-") {
+                    1
+                } else {
+                    repo.get_max_order_for_workout(w_id).await? + 1
+                };
+                let we_id = repo.add_workout_exercise(w_id, ex.id, order, None, dry_run).await?;
+                let set_id = repo.add_set(we_id, 1, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, dry_run).await?;
+                let formatted_set_id = format_dry_run_id(set_id, dry_run);
+                println!("Added exercise {} to workout {} and created first set with ID {}", ex.name, workout_id, formatted_set_id);
             } else {
                 println!("Exercise not found: {}", exercise_name_or_id);
             }

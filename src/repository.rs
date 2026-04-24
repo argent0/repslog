@@ -14,7 +14,10 @@ impl Repository {
     }
 
     // --- Exercises ---
-    pub async fn add_exercise(&self, name: &str, category: &str, muscle_groups: Option<&str>, equipment: Option<&str>, description: Option<&str>, is_custom: bool) -> Result<i64> {
+    pub async fn add_exercise(&self, name: &str, category: &str, muscle_groups: Option<&str>, equipment: Option<&str>, description: Option<&str>, is_custom: bool, dry_run: bool) -> Result<i64> {
+        if dry_run {
+            return self.get_next_id("exercises").await;
+        }
         let res = sqlx::query("INSERT INTO exercises (name, category, muscle_groups, equipment, description, is_custom) VALUES (?, ?, ?, ?, ?, ?)")
             .bind(name)
             .bind(category)
@@ -56,7 +59,10 @@ impl Repository {
     }
 
     // --- Workouts ---
-    pub async fn create_workout(&self, workout_type: Option<&str>, notes: Option<&str>, started_at: Option<&str>) -> Result<i64> {
+    pub async fn create_workout(&self, workout_type: Option<&str>, notes: Option<&str>, started_at: Option<&str>, dry_run: bool) -> Result<i64> {
+        if dry_run {
+            return self.get_next_id("workouts").await;
+        }
         let res = sqlx::query("INSERT INTO workouts (workout_type, notes, started_at) VALUES (?, ?, COALESCE(?, CURRENT_TIMESTAMP))")
             .bind(workout_type)
             .bind(notes)
@@ -85,7 +91,10 @@ impl Repository {
             .await?)
     }
 
-    pub async fn update_workout(&self, id: i64, workout_type: Option<&str>, notes: Option<&str>, duration: Option<i32>, feeling: Option<i32>, started_at: Option<&str>) -> Result<()> {
+    pub async fn update_workout(&self, id: i64, workout_type: Option<&str>, notes: Option<&str>, duration: Option<i32>, feeling: Option<i32>, started_at: Option<&str>, dry_run: bool) -> Result<()> {
+        if dry_run {
+            return Ok(());
+        }
         sqlx::query("UPDATE workouts SET workout_type = COALESCE(?, workout_type), notes = COALESCE(?, notes), duration_minutes = COALESCE(?, duration_minutes), overall_feeling = COALESCE(?, overall_feeling), started_at = COALESCE(?, started_at) WHERE id = ?")
             .bind(workout_type)
             .bind(notes)
@@ -98,7 +107,10 @@ impl Repository {
         Ok(())
     }
 
-    pub async fn delete_workout(&self, id: i64) -> Result<()> {
+    pub async fn delete_workout(&self, id: i64, dry_run: bool) -> Result<()> {
+        if dry_run {
+            return Ok(());
+        }
         sqlx::query("DELETE FROM workouts WHERE id = ?")
             .bind(id)
             .execute(&self.pool)
@@ -107,7 +119,10 @@ impl Repository {
     }
 
     // --- Workout Exercises ---
-    pub async fn add_workout_exercise(&self, workout_id: i64, exercise_id: i64, order: i32, notes: Option<&str>) -> Result<i64> {
+    pub async fn add_workout_exercise(&self, workout_id: i64, exercise_id: i64, order: i32, notes: Option<&str>, dry_run: bool) -> Result<i64> {
+        if dry_run {
+            return self.get_next_id("workout_exercises").await;
+        }
         let res = sqlx::query("INSERT INTO workout_exercises (workout_id, exercise_id, \"order\", notes) VALUES (?, ?, ?, ?)")
             .bind(workout_id)
             .bind(exercise_id)
@@ -165,7 +180,11 @@ impl Repository {
         pace: Option<f64>,
         calories: Option<i32>,
         laps: Option<Json<Vec<Lap>>>,
+        dry_run: bool,
     ) -> Result<i64> {
+        if dry_run {
+            return self.get_next_id("exercise_sets").await;
+        }
         let res = sqlx::query("INSERT INTO exercise_sets (
             workout_exercise_id, set_number, reps, weight_kg, duration_seconds, distance_km, rpe, rir, 
             effective_reps, cluster_id, rest_seconds, notes, avg_heart_rate_bpm, max_heart_rate_bpm, 
@@ -215,5 +234,24 @@ impl Repository {
             .fetch_one(&self.pool)
             .await?;
         Ok(res.get::<Option<i64>, _>("max_cluster").unwrap_or(0) + 1)
+    }
+
+    pub async fn get_next_id(&self, table_name: &str) -> Result<i64> {
+        let res = sqlx::query("SELECT seq FROM sqlite_sequence WHERE name = ?")
+            .bind(table_name)
+            .fetch_optional(&self.pool)
+            .await?;
+        
+        match res {
+            Some(row) => Ok(row.get::<i64, _>("seq") + 1),
+            None => {
+                // If not in sqlite_sequence, check if table has any rows
+                let query = format!("SELECT MAX(id) as max_id FROM {}", table_name);
+                let res = sqlx::query(&query)
+                    .fetch_one(&self.pool)
+                    .await?;
+                Ok(res.get::<Option<i64>, _>("max_id").unwrap_or(0) + 1)
+            }
+        }
     }
 }

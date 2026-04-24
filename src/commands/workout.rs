@@ -1,21 +1,22 @@
 use crate::cli::{WorkoutAction, WorkoutExerciseAction};
 use crate::repository::Repository;
 use crate::error::Result;
-use crate::utils::{print_table, format_duration, format_pace, format_hr_zones_bar};
+use crate::utils::{print_table, format_duration, format_pace, format_hr_zones_bar, format_dry_run_id, parse_id};
 use crate::models::HeartRateZones;
 use colored::*;
 
 pub async fn handle_workout(action: WorkoutAction, repo: &Repository) -> Result<()> {
     match action {
-        WorkoutAction::Create { workout_type, notes, date } => {
+        WorkoutAction::Create { workout_type, notes, date, dry_run } => {
             // Try to parse to ensure it's a valid date (YYYY-MM-DD)
             if chrono::NaiveDate::parse_from_str(&date, "%Y-%m-%d").is_err() && 
                chrono::NaiveDateTime::parse_from_str(&date, "%Y-%m-%d %H:%M:%S").is_err() {
                 return Err(crate::error::RepslogError::Cli("Invalid date format. Use YYYY-MM-DD or 'YYYY-MM-DD HH:MM:SS'".to_string()));
             }
-            let id = repo.create_workout(workout_type.as_deref(), notes.as_deref(), Some(&date)).await?;
-            eprintln!("Created workout with ID {}", id);
-            println!("{}", id);
+            let id = repo.create_workout(workout_type.as_deref(), notes.as_deref(), Some(&date), dry_run).await?;
+            let formatted_id = format_dry_run_id(id, dry_run);
+            eprintln!("Created workout with ID {}", formatted_id);
+            println!("{}", formatted_id);
         }
         WorkoutAction::List { limit, days } => {
             let workouts = repo.list_workouts(limit, days).await?;
@@ -173,18 +174,20 @@ pub async fn handle_workout(action: WorkoutAction, repo: &Repository) -> Result<
                 println!("Workout not found");
             }
         }
-        WorkoutAction::Update { workout_id, workout_type, notes, duration, feeling, date } => {
+        WorkoutAction::Update { workout_id, workout_type, notes, duration, feeling, date, dry_run } => {
+            let id = parse_id(&workout_id, dry_run)?;
             if let Some(ref d) = date {
                 if chrono::NaiveDate::parse_from_str(d, "%Y-%m-%d").is_err() && 
                    chrono::NaiveDateTime::parse_from_str(d, "%Y-%m-%d %H:%M:%S").is_err() {
                     return Err(crate::error::RepslogError::Cli("Invalid date format. Use YYYY-MM-DD or 'YYYY-MM-DD HH:MM:SS'".to_string()));
                 }
             }
-            repo.update_workout(workout_id, workout_type.as_deref(), notes.as_deref(), duration, feeling, date.as_deref()).await?;
+            repo.update_workout(id, workout_type.as_deref(), notes.as_deref(), duration, feeling, date.as_deref(), dry_run).await?;
             println!("Updated workout {}", workout_id);
         }
-        WorkoutAction::Delete { workout_id } => {
-            repo.delete_workout(workout_id).await?;
+        WorkoutAction::Delete { workout_id, dry_run } => {
+            let id = parse_id(&workout_id, dry_run)?;
+            repo.delete_workout(id, dry_run).await?;
             println!("Deleted workout {}", workout_id);
         }
     }
@@ -242,17 +245,19 @@ async fn get_workout_summary(repo: &Repository, workout: &crate::models::Workout
 
 pub async fn handle_workout_exercise(action: WorkoutExerciseAction, repo: &Repository) -> Result<()> {
     match action {
-        WorkoutExerciseAction::Add { workout_id, exercise_id_or_name, order } => {
+        WorkoutExerciseAction::Add { workout_id, exercise_id_or_name, order, dry_run } => {
+            let w_id = parse_id(&workout_id, dry_run)?;
             let exercise = repo.find_exercise_by_id_or_name(&exercise_id_or_name).await?;
             if let Some(ex) = exercise {
                 let order = if let Some(o) = order {
                     o
                 } else {
-                    repo.get_max_order_for_workout(workout_id).await? + 1
+                    repo.get_max_order_for_workout(w_id).await? + 1
                 };
-                let id = repo.add_workout_exercise(workout_id, ex.id, order, None).await?;
-                eprintln!("Added exercise {} (ID: {}) to workout {} with WE ID {}", ex.name, ex.id, workout_id, id);
-                println!("{}", id);
+                let id = repo.add_workout_exercise(w_id, ex.id, order, None, dry_run).await?;
+                let formatted_id = format_dry_run_id(id, dry_run);
+                eprintln!("Added exercise {} (ID: {}) to workout {} with WE ID {}", ex.name, ex.id, workout_id, formatted_id);
+                println!("{}", formatted_id);
             } else {
                 println!("Exercise not found: {}", exercise_id_or_name);
             }

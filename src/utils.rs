@@ -74,6 +74,31 @@ pub fn format_hr_zones_bar(zones: &HeartRateZones) -> String {
     )
 }
 
+pub fn format_dry_run_id(id: i64, dry_run: bool) -> String {
+    if dry_run {
+        format!("DRY-RUN-{}", id)
+    } else {
+        id.to_string()
+    }
+}
+
+pub fn parse_id(id_str: &str, dry_run: bool) -> Result<i64, crate::error::RepslogError> {
+    if id_str.starts_with("DRY-RUN-") {
+        if !dry_run {
+            return Err(crate::error::RepslogError::Cli(format!(
+                "ID '{}' is a dry-run ID and can only be used with the --dry-run flag",
+                id_str
+            )));
+        }
+        // For dry-run, we return a dummy ID as it won't be used for actual DB writes
+        Ok(0)
+    } else {
+        id_str.parse::<i64>().map_err(|_| {
+            crate::error::RepslogError::Cli(format!("Invalid ID: '{}'. Must be an integer.", id_str))
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -9,13 +9,13 @@ async fn test_cardio_tracking() {
     let repo = Repository::new(pool);
 
     // 1. Setup Cardio Exercise
-    let ex_id = repo.add_exercise("Outdoor Run", "cardio", Some("[\"legs\"]"), Some("none"), Some("Evening run"), false).await.unwrap();
+    let ex_id = repo.add_exercise("Outdoor Run", "cardio", Some("[\"legs\"]"), Some("none"), Some("Evening run"), false, false).await.unwrap();
 
     // 2. Create Workout
-    let w_id = repo.create_workout(Some("Run"), None, None).await.unwrap();
+    let w_id = repo.create_workout(Some("Run"), None, None, false).await.unwrap();
 
     // 3. Add Exercise to Workout
-    let we_id = repo.add_workout_exercise(w_id, ex_id, 1, None).await.unwrap();
+    let we_id = repo.add_workout_exercise(w_id, ex_id, 1, None, false).await.unwrap();
 
     // 4. Add Cardio Set
     let avg_hr = Some(155.0);
@@ -36,7 +36,7 @@ async fn test_cardio_tracking() {
 
     let s_id = repo.add_set(
         we_id, 1, None, None, duration, distance, None, None, None, None, None, Some("Nice run"),
-        avg_hr, max_hr, Some(Json(zones.clone())), pace, calories, Some(Json(laps.clone()))
+        avg_hr, max_hr, Some(Json(zones.clone())), pace, calories, Some(Json(laps.clone())), false
     ).await.unwrap();
     assert!(s_id > 0);
 

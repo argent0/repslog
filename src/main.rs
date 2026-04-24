@@ -20,8 +20,8 @@ async fn run(cli: Cli) -> Result<()> {
 
     // Handle commands that don't require an up-to-date schema
     match &cli.command {
-        Commands::Init => {
-            commands::init::handle_init(&pool).await?;
+        Commands::Init { dry_run } => {
+            commands::init::handle_init(&pool, *dry_run).await?;
             return Ok(());
         }
         Commands::Migrate { status, dry_run, force } => {
