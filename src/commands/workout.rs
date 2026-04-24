@@ -14,7 +14,8 @@ pub async fn handle_workout(action: WorkoutAction, repo: &Repository) -> Result<
                 return Err(crate::error::RepslogError::Cli("Invalid date format. Use YYYY-MM-DD or 'YYYY-MM-DD HH:MM:SS'".to_string()));
             }
             let id = repo.create_workout(workout_type.as_deref(), notes.as_deref(), Some(&date)).await?;
-            println!("Created workout with ID {}", id);
+            eprintln!("Created workout with ID {}", id);
+            println!("{}", id);
         }
         WorkoutAction::List { limit, days } => {
             let workouts = repo.list_workouts(limit, days).await?;
@@ -250,7 +251,8 @@ pub async fn handle_workout_exercise(action: WorkoutExerciseAction, repo: &Repos
                     repo.get_max_order_for_workout(workout_id).await? + 1
                 };
                 let id = repo.add_workout_exercise(workout_id, ex.id, order, None).await?;
-                println!("Added exercise {} (ID: {}) to workout {} with WE ID {}", ex.name, ex.id, workout_id, id);
+                eprintln!("Added exercise {} (ID: {}) to workout {} with WE ID {}", ex.name, ex.id, workout_id, id);
+                println!("{}", id);
             } else {
                 println!("Exercise not found: {}", exercise_id_or_name);
             }

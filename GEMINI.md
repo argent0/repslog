@@ -66,3 +66,15 @@ cargo test
 cargo fmt
 cargo clippy
 ```
+
+## Documentation Maintenance
+`repslog` maintains a suite of testable documentation in the `docs/` folder.
+
+### Rules for Documentation
+- **Stay Current:** Any change to CLI arguments, command structure, or core behavior MUST be reflected in the corresponding files in `docs/`.
+- **Testable Examples:** Ensure that code blocks in documentation remain accurate.
+- **Verification:** After making changes to the code or documentation, you MUST run the verification script to ensure the documentation examples are still valid:
+  ```bash
+  cargo build && ./docs/verify_examples.sh
+  ```
+- **Sync:** The `README.md` usage guide should remain a high-level summary of the more detailed `docs/` content.

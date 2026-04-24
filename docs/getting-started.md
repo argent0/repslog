@@ -1,0 +1,54 @@
+# Getting Started
+
+This guide will help you get `repslog` installed and set up for your first workout.
+
+## Installation
+
+`repslog` is built with Rust. You can install it from source using `cargo`.
+
+```bash
+# Clone the repository (if you haven't already)
+# git clone https://github.com/username/repslog.git
+# cd repslog
+
+# Install the binary
+cargo install --path .
+```
+
+## Initialization
+
+Before using `repslog`, you need to initialize the database. This command creates the SQLite database file and applies the initial schema and default exercises.
+
+```bash
+repslog init
+```
+
+### Data Location
+
+By default, `repslog` follows the XDG Base Directory Specification:
+- **Linux:** `~/.local/share/repslog/repslog.db`
+- **macOS:** `~/Library/Application Support/repslog/repslog.db`
+
+## Verification
+
+After initialization, you can verify that the default exercises have been loaded:
+
+```bash
+repslog exercise list
+```
+
+You should see a table of standard exercises like "Squat (Barbell)", "Pushups", and "Running".
+
+## Database Migrations
+
+If you are upgrading from an older version of `repslog`, you may need to run migrations to update your database schema:
+
+```bash
+repslog migrate
+```
+
+To check the status of migrations:
+
+```bash
+repslog migrate --status
+```

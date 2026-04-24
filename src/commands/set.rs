@@ -63,7 +63,8 @@ pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
                 calories,
                 laps.map(|l| Json(l.0)),
             ).await?;
-            println!("Added set {} to workout-exercise {} with set ID {}", set_number, id, set_id);
+            eprintln!("Added set {} to workout-exercise {} with set ID {}", set_number, id, set_id);
+            println!("{}", set_id);
         }
         SetAction::AddCardio {
             workout_exercise_id,
@@ -110,7 +111,8 @@ pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
                 Some(calories),
                 laps.map(|l| Json(l.0)),
             ).await?;
-            println!("Added cardio set {} to workout-exercise {} with set ID {}", set_number, id, set_id);
+            eprintln!("Added cardio set {} to workout-exercise {} with set ID {}", set_number, id, set_id);
+            println!("{}", set_id);
         }
         SetAction::AddCluster {
             workout_exercise_id,
@@ -166,7 +168,8 @@ pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
                 ).await?;
                 set_ids.push(set_id);
             }
-            println!("Added cluster {} with {} sets to workout-exercise {}. Set IDs: {:?}", cluster_id, set_ids.len(), id, set_ids);
+            eprintln!("Added cluster {} with {} sets to workout-exercise {}. Set IDs: {:?}", cluster_id, set_ids.len(), id, set_ids);
+            println!("{}", cluster_id);
         }
         SetAction::List { workout_exercise_id } => {
             let sets = repo.list_sets(workout_exercise_id).await?;

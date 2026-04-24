@@ -135,6 +135,22 @@ repslog migrate --dry-run       # Show what would be applied
 repslog migrate --force         # Force re-apply all migrations (idempotent, fixes partial applications)
 ```
 
+## Documentation
+
+Comprehensive documentation is available in the `docs/` folder.
+
+### Verifying Documentation Examples
+The documentation includes testable examples. You can verify that all documented commands are working correctly by running the verification script:
+
+```bash
+# Build the latest version first
+cargo build
+# Run the verification script
+./docs/verify_examples.sh
+```
+
+This script creates a temporary isolated environment to test the full lifecycle of `repslog` as described in the docs.
+
 ## Project Structure
 - `src/cli.rs`: CLI definitions (clap v4)
 - `src/db.rs`: Database connection and migrations

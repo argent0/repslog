@@ -21,7 +21,8 @@ pub async fn handle_exercise(action: ExerciseAction, repo: &Repository) -> Resul
         }
         ExerciseAction::Add { name, category, equipment, muscles, description } => {
             let id = repo.add_exercise(&name, &category, muscles.as_deref(), equipment.as_deref(), description.as_deref(), true).await?;
-            println!("Added exercise {} with ID {}", name, id);
+            eprintln!("Added exercise {} with ID {}", name, id);
+            println!("{}", id);
         }
         ExerciseAction::Search { term } => {
             let exercises = repo.list_exercises(Some(term), None).await?;
