@@ -33,7 +33,6 @@ CREATE TABLE exercises (
 CREATE TABLE workouts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    finished_at TEXT,
     workout_type TEXT,                -- "push", "pull", "legs", "full_body", "run", "yoga", etc.
     notes TEXT,
     overall_feeling INTEGER CHECK (overall_feeling BETWEEN 1 AND 5),
@@ -84,8 +83,7 @@ repslog
 │   ├── create [--type <type>] [--notes "..."]          # returns the new workout ID
 │   ├── list [--limit N] [--days N]
 │   ├── view <workout_id>
-│   ├── finish <workout_id> [--duration <min>] [--feeling <1-5>]
-│   ├── current                                         # shows active workout if any
+│   ├── update <workout_id> [--type <type>] [--notes "..."] [--duration <min>] [--feeling <1-5>] [--date <date>]
 │   └── delete <workout_id>
 ├── session                                             # alias for workout commands
 ├── workout-exercise

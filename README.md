@@ -34,7 +34,7 @@ repslog exercise search "Squat"
 repslog exercise add "Bulgarian Split Squat" --category strength --equipment dumbbell --muscles "quads,glutes"
 ```
 
-### 3. Workouts (Sessions)
+# Workouts (Sessions)
 Workouts are the top-level containers for your training.
 ```bash
 # Create a new workout (date is mandatory: YYYY-MM-DD)
@@ -42,9 +42,6 @@ repslog workout create --type "Legs" --date "2026-04-23" --notes "Focus on form"
 
 # List recent workouts
 repslog workout list --days 7
-
-# Show the currently active (unfinished) workout
-repslog workout current
 
 # View full details of a workout (including exercises and sets)
 repslog workout view 1
@@ -97,13 +94,13 @@ repslog set add-cardio <we_id> \
 # Quick: Add exercise and first set in one command
 repslog set quick 1 "Pushups"
 ```
-
-### 6. Finishing & Stats
+### 6. Updating & Stats
 ```bash
-# Finish workout and record duration/feeling (1-5)
-repslog workout finish 1 --duration 60 --feeling 5
+# Update workout details like duration, feeling (1-5), or notes anytime
+repslog workout update 1 --duration 60 --feeling 5 --notes "Updated notes"
 
 # View Personal Records
+...
 repslog stats prs --exercise "Squat"
 
 # View Volume Trends

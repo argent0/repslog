@@ -85,20 +85,17 @@ impl Repository {
             .await?)
     }
 
-    pub async fn finish_workout(&self, id: i64, duration: Option<i32>, feeling: Option<i32>) -> Result<()> {
-        sqlx::query("UPDATE workouts SET finished_at = CURRENT_TIMESTAMP, duration_minutes = ?, overall_feeling = ? WHERE id = ?")
+    pub async fn update_workout(&self, id: i64, workout_type: Option<&str>, notes: Option<&str>, duration: Option<i32>, feeling: Option<i32>, started_at: Option<&str>) -> Result<()> {
+        sqlx::query("UPDATE workouts SET workout_type = COALESCE(?, workout_type), notes = COALESCE(?, notes), duration_minutes = COALESCE(?, duration_minutes), overall_feeling = COALESCE(?, overall_feeling), started_at = COALESCE(?, started_at) WHERE id = ?")
+            .bind(workout_type)
+            .bind(notes)
             .bind(duration)
             .bind(feeling)
+            .bind(started_at)
             .bind(id)
             .execute(&self.pool)
             .await?;
         Ok(())
-    }
-
-    pub async fn get_current_workout(&self) -> Result<Option<Workout>> {
-        Ok(sqlx::query_as::<_, Workout>("SELECT * FROM workouts WHERE finished_at IS NULL ORDER BY started_at DESC LIMIT 1")
-            .fetch_optional(&self.pool)
-            .await?)
     }
 
     pub async fn delete_workout(&self, id: i64) -> Result<()> {

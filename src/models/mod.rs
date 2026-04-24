@@ -18,7 +18,6 @@ pub struct Exercise {
 pub struct Workout {
     pub id: i64,
     pub started_at: String,
-    pub finished_at: Option<String>,
     pub workout_type: Option<String>,
     pub notes: Option<String>,
     pub overall_feeling: Option<i32>,

@@ -51,11 +51,11 @@ async fn test_workout_flow() {
     assert_eq!(sets.len(), 2);
     assert_eq!(sets[0].weight_kg, Some(60.0));
 
-    // 6. Finish Workout
-    repo.finish_workout(w_id, Some(45), Some(4)).await.unwrap();
-    let finished_w = repo.get_workout(w_id).await.unwrap().unwrap();
-    assert!(finished_w.finished_at.is_some());
-    assert_eq!(finished_w.duration_minutes, Some(45));
+    // 6. Update Workout
+    repo.update_workout(w_id, None, None, Some(45), Some(4), None).await.unwrap();
+    let updated_w = repo.get_workout(w_id).await.unwrap().unwrap();
+    assert_eq!(updated_w.duration_minutes, Some(45));
+    assert_eq!(updated_w.overall_feeling, Some(4));
 }
 
 #[tokio::test]

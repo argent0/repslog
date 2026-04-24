@@ -107,16 +107,20 @@ pub enum WorkoutAction {
     View {
         workout_id: i64,
     },
-    /// Finish a workout
-    Finish {
+    /// Update a workout
+    Update {
         workout_id: i64,
+        #[arg(short, long = "type")]
+        workout_type: Option<String>,
+        #[arg(short, long)]
+        notes: Option<String>,
         #[arg(short, long)]
         duration: Option<i32>,
         #[arg(short, long)]
         feeling: Option<i32>,
+        #[arg(short, long)]
+        date: Option<String>,
     },
-    /// Show current active workout
-    Current,
     /// Delete a workout
     Delete {
         workout_id: i64,

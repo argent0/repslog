@@ -2,24 +2,22 @@ use repslog::repository::Repository;
 use repslog::db::setup_test_db;
 
 #[tokio::test]
-async fn test_current_workout() {
+async fn test_update_workout() {
     let pool = setup_test_db().await.unwrap();
     let repo = Repository::new(pool);
 
-    // No workout yet
-    let current = repo.get_current_workout().await.unwrap();
-    assert!(current.is_none());
-
     // Create a workout
-    repo.create_workout(Some("Push"), None, None).await.unwrap();
-    let current = repo.get_current_workout().await.unwrap();
-    assert!(current.is_some());
-    assert_eq!(current.unwrap().workout_type, Some("Push".to_string()));
-
-    // Finish it
-    repo.finish_workout(1, Some(60), Some(5)).await.unwrap();
-    let current = repo.get_current_workout().await.unwrap();
-    assert!(current.is_none());
+    let w_id = repo.create_workout(Some("Push"), None, None).await.unwrap();
+    
+    // Update it
+    repo.update_workout(w_id, Some("Pull"), Some("Feeling good"), Some(45), Some(4), Some("2023-01-01")).await.unwrap();
+    
+    let workout = repo.get_workout(w_id).await.unwrap().unwrap();
+    assert_eq!(workout.workout_type, Some("Pull".to_string()));
+    assert_eq!(workout.notes, Some("Feeling good".to_string()));
+    assert_eq!(workout.duration_minutes, Some(45));
+    assert_eq!(workout.overall_feeling, Some(4));
+    assert_eq!(workout.started_at, "2023-01-01");
 }
 
 #[tokio::test]

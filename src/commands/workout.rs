@@ -21,12 +21,11 @@ pub async fn handle_workout(action: WorkoutAction, repo: &Repository) -> Result<
                 rows.push(vec![
                     w.id.to_string(),
                     w.started_at,
-                    w.finished_at.unwrap_or_else(|| "IN PROGRESS".to_string()),
                     w.workout_type.unwrap_or_default(),
                     w.duration_minutes.map(|d| d.to_string()).unwrap_or_default(),
                 ]);
             }
-            print_table(vec!["ID", "Started At", "Finished At", "Type", "Duration (min)"], rows);
+            print_table(vec!["ID", "Started At", "Type", "Duration (min)"], rows);
         }
         WorkoutAction::View { workout_id } => {
             let workout = repo.get_workout(workout_id).await?;
@@ -34,7 +33,6 @@ pub async fn handle_workout(action: WorkoutAction, repo: &Repository) -> Result<
                 println!("Workout ID: {}", w.id);
                 println!("Type: {}", w.workout_type.unwrap_or_default());
                 println!("Started: {}", w.started_at);
-                println!("Finished: {}", w.finished_at.unwrap_or_else(|| "IN PROGRESS".to_string()));
                 println!("Notes: {}", w.notes.unwrap_or_default());
                 
                 let exercises = repo.list_workout_exercises(workout_id).await?;
@@ -100,19 +98,15 @@ pub async fn handle_workout(action: WorkoutAction, repo: &Repository) -> Result<
                 println!("Workout not found");
             }
         }
-        WorkoutAction::Finish { workout_id, duration, feeling } => {
-            repo.finish_workout(workout_id, duration, feeling).await?;
-            println!("Finished workout {}", workout_id);
-        }
-        WorkoutAction::Current => {
-            let workout = repo.get_current_workout().await?;
-            if let Some(w) = workout {
-                println!("Active workout ID: {}", w.id);
-                println!("Type: {}", w.workout_type.unwrap_or_default());
-                println!("Started: {}", w.started_at);
-            } else {
-                println!("No active workout found");
+        WorkoutAction::Update { workout_id, workout_type, notes, duration, feeling, date } => {
+            if let Some(ref d) = date {
+                if chrono::NaiveDate::parse_from_str(d, "%Y-%m-%d").is_err() && 
+                   chrono::NaiveDateTime::parse_from_str(d, "%Y-%m-%d %H:%M:%S").is_err() {
+                    return Err(crate::error::RepslogError::Cli("Invalid date format. Use YYYY-MM-DD or 'YYYY-MM-DD HH:MM:SS'".to_string()));
+                }
             }
+            repo.update_workout(workout_id, workout_type.as_deref(), notes.as_deref(), duration, feeling, date.as_deref()).await?;
+            println!("Updated workout {}", workout_id);
         }
         WorkoutAction::Delete { workout_id } => {
             repo.delete_workout(workout_id).await?;
