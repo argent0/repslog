@@ -137,6 +137,17 @@ repslog migrate --dry-run       # Show what would be applied
 repslog migrate --force         # Force re-apply all migrations (idempotent, fixes partial applications)
 ```
 
+## LLM Agent Skills
+
+`repslog` includes a set of skills and reference documentation for LLM agents (like Claude Code). When installed via the Arch Linux package, these are located at `/usr/share/repslog/skills/workout-tracker/`.
+
+To use them with Claude Code (or any compatible agent), copy or symlink them to your local skills directory:
+
+```bash
+mkdir -p ~/.claude/skills/workout-tracker
+cp -r /usr/share/repslog/skills/workout-tracker/* ~/.claude/skills/workout-tracker/
+```
+
 ## Documentation
 
 Comprehensive documentation is available in the `docs/` folder.

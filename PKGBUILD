@@ -2,11 +2,12 @@
 pkgname=repslog
 pkgver=0.1.0
 pkgrel=1
-pkgdesc="A Linux-first command-line workout tracker"
+pkgdesc="A Linux-first command-line workout tracker with LLM agent skills support"
 arch=('x86_64')
 url="https://github.com/argent0/repslog"
 license=('MIT')
 depends=('gcc-libs')
+provides=('repslog')
 makedepends=('git' 'rust' 'cargo')
 source=("${pkgname}::git+ssh://git@github.com/argent0/repslog.git")
 sha256sums=('SKIP')
@@ -27,4 +28,8 @@ package() {
   install -Dm755 "target/release/repslog" "$pkgdir/usr/bin/repslog"
   install -Dm644 "README.md" "$pkgdir/usr/share/doc/$pkgname/README.md"
   install -Dm644 "LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+
+  # Install LLM agent skill (Claude Code / Agent Skills compatible)
+  install -d "$pkgdir/usr/share/repslog/skills/workout-tracker/"
+  cp -r "skill/"* "$pkgdir/usr/share/repslog/skills/workout-tracker/"
 }
