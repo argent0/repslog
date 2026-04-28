@@ -27,6 +27,7 @@ package() {
   cd "$srcdir/$pkgname"
   install -Dm755 "target/release/repslog" "$pkgdir/usr/bin/repslog"
   install -Dm644 "README.md" "$pkgdir/usr/share/doc/$pkgname/README.md"
+  install -Dm644 docs/*.md -t "$pkgdir/usr/share/doc/$pkgname/"
   install -Dm644 "LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 
   # Install LLM agent skill (Claude Code / Agent Skills compatible)
