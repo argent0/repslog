@@ -44,3 +44,5 @@ The database file is stored in your user's data directory:
 - **macOS:** `~/Library/Application Support/repslog/repslog.db`
 
 You can manually back up this file to preserve your training history.
+
+Use the `--db <PATH>` global option (e.g. `repslog --db /tmp/test.db migrate`) to target a specific database file instead of the default location. This is especially handy for testing.

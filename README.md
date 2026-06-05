@@ -18,6 +18,8 @@ cargo install --path .
 
 All commands that modify the database support a `--dry-run` flag to preview changes without applying them.
 
+The `--db <PATH>` global option lets you target a specific SQLite file (handy for testing or isolated runs): `repslog --db /tmp/test.db ...`
+
 ### 1. Initialize
 Sets up the database and seeds default exercises.
 ```bash

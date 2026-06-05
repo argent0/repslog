@@ -1,8 +1,8 @@
-use sqlx::sqlite::SqlitePool;
-use sqlx::Row;
-use sqlx::types::Json;
-use crate::models::{Exercise, Workout, WorkoutExercise, ExerciseSet, HeartRateZones, Lap};
 use crate::error::Result;
+use crate::models::{Exercise, ExerciseSet, HeartRateZones, Lap, Workout, WorkoutExercise};
+use sqlx::sqlite::SqlitePool;
+use sqlx::types::Json;
+use sqlx::Row;
 
 pub struct Repository {
     pub pool: SqlitePool,
@@ -14,7 +14,16 @@ impl Repository {
     }
 
     // --- Exercises ---
-    pub async fn add_exercise(&self, name: &str, category: &str, muscle_groups: Option<&str>, equipment: Option<&str>, description: Option<&str>, is_custom: bool, dry_run: bool) -> Result<i64> {
+    pub async fn add_exercise(
+        &self,
+        name: &str,
+        category: &str,
+        muscle_groups: Option<&str>,
+        equipment: Option<&str>,
+        description: Option<&str>,
+        is_custom: bool,
+        dry_run: bool,
+    ) -> Result<i64> {
         if dry_run {
             return self.get_next_id("exercises").await;
         }
@@ -30,7 +39,11 @@ impl Repository {
         Ok(res.last_insert_rowid())
     }
 
-    pub async fn list_exercises(&self, search: Option<String>, category: Option<String>) -> Result<Vec<Exercise>> {
+    pub async fn list_exercises(
+        &self,
+        search: Option<String>,
+        category: Option<String>,
+    ) -> Result<Vec<Exercise>> {
         let mut query = "SELECT * FROM exercises WHERE 1=1".to_string();
         if let Some(s) = &search {
             query.push_str(&format!(" AND name LIKE '%{}%'", s));
@@ -46,20 +59,30 @@ impl Repository {
 
     pub async fn find_exercise_by_id_or_name(&self, id_or_name: &str) -> Result<Option<Exercise>> {
         if let Ok(id) = id_or_name.parse::<i64>() {
-            Ok(sqlx::query_as::<_, Exercise>("SELECT * FROM exercises WHERE id = ?")
-                .bind(id)
-                .fetch_optional(&self.pool)
-                .await?)
+            Ok(
+                sqlx::query_as::<_, Exercise>("SELECT * FROM exercises WHERE id = ?")
+                    .bind(id)
+                    .fetch_optional(&self.pool)
+                    .await?,
+            )
         } else {
-            Ok(sqlx::query_as::<_, Exercise>("SELECT * FROM exercises WHERE name = ?")
-                .bind(id_or_name)
-                .fetch_optional(&self.pool)
-                .await?)
+            Ok(
+                sqlx::query_as::<_, Exercise>("SELECT * FROM exercises WHERE name = ?")
+                    .bind(id_or_name)
+                    .fetch_optional(&self.pool)
+                    .await?,
+            )
         }
     }
 
     // --- Workouts ---
-    pub async fn create_workout(&self, workout_type: Option<&str>, notes: Option<&str>, started_at: Option<&str>, dry_run: bool) -> Result<i64> {
+    pub async fn create_workout(
+        &self,
+        workout_type: Option<&str>,
+        notes: Option<&str>,
+        started_at: Option<&str>,
+        dry_run: bool,
+    ) -> Result<i64> {
         if dry_run {
             return self.get_next_id("workouts").await;
         }
@@ -85,13 +108,24 @@ impl Repository {
     }
 
     pub async fn get_workout(&self, id: i64) -> Result<Option<Workout>> {
-        Ok(sqlx::query_as::<_, Workout>("SELECT * FROM workouts WHERE id = ?")
-            .bind(id)
-            .fetch_optional(&self.pool)
-            .await?)
+        Ok(
+            sqlx::query_as::<_, Workout>("SELECT * FROM workouts WHERE id = ?")
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await?,
+        )
     }
 
-    pub async fn update_workout(&self, id: i64, workout_type: Option<&str>, notes: Option<&str>, duration: Option<i32>, feeling: Option<i32>, started_at: Option<&str>, dry_run: bool) -> Result<()> {
+    pub async fn update_workout(
+        &self,
+        id: i64,
+        workout_type: Option<&str>,
+        notes: Option<&str>,
+        duration: Option<i32>,
+        feeling: Option<i32>,
+        started_at: Option<&str>,
+        dry_run: bool,
+    ) -> Result<()> {
         if dry_run {
             return Ok(());
         }
@@ -119,7 +153,14 @@ impl Repository {
     }
 
     // --- Workout Exercises ---
-    pub async fn add_workout_exercise(&self, workout_id: i64, exercise_id: i64, order: i32, notes: Option<&str>, dry_run: bool) -> Result<i64> {
+    pub async fn add_workout_exercise(
+        &self,
+        workout_id: i64,
+        exercise_id: i64,
+        order: i32,
+        notes: Option<&str>,
+        dry_run: bool,
+    ) -> Result<i64> {
         if dry_run {
             return self.get_next_id("workout_exercises").await;
         }
@@ -133,46 +174,57 @@ impl Repository {
         Ok(res.last_insert_rowid())
     }
 
-    pub async fn list_workout_exercises(&self, workout_id: i64) -> Result<Vec<(WorkoutExercise, String)>> {
+    pub async fn list_workout_exercises(
+        &self,
+        workout_id: i64,
+    ) -> Result<Vec<(WorkoutExercise, String)>> {
         let res = sqlx::query("SELECT we.*, e.name as exercise_name FROM workout_exercises we JOIN exercises e ON we.exercise_id = e.id WHERE we.workout_id = ? ORDER BY we.\"order\"")
             .bind(workout_id)
             .fetch_all(&self.pool)
             .await?;
-        
-        let exercises = res.into_iter().map(|r| {
-            (WorkoutExercise {
-                id: r.get("id"),
-                workout_id: r.get("workout_id"),
-                exercise_id: r.get("exercise_id"),
-                order: r.get("order"),
-                notes: r.get("notes"),
-            }, r.get("exercise_name"))
-        }).collect();
+
+        let exercises = res
+            .into_iter()
+            .map(|r| {
+                (
+                    WorkoutExercise {
+                        id: r.get("id"),
+                        workout_id: r.get("workout_id"),
+                        exercise_id: r.get("exercise_id"),
+                        order: r.get("order"),
+                        notes: r.get("notes"),
+                    },
+                    r.get("exercise_name"),
+                )
+            })
+            .collect();
         Ok(exercises)
     }
 
     pub async fn get_max_order_for_workout(&self, workout_id: i64) -> Result<i32> {
-        let res = sqlx::query("SELECT MAX(\"order\") as max_order FROM workout_exercises WHERE workout_id = ?")
-            .bind(workout_id)
-            .fetch_one(&self.pool)
-            .await?;
+        let res = sqlx::query(
+            "SELECT MAX(\"order\") as max_order FROM workout_exercises WHERE workout_id = ?",
+        )
+        .bind(workout_id)
+        .fetch_one(&self.pool)
+        .await?;
         Ok(res.get::<Option<i32>, _>("max_order").unwrap_or(0))
     }
 
     // --- Sets ---
     pub async fn add_set(
-        &self, 
-        workout_exercise_id: i64, 
-        set_number: i32, 
-        reps: Option<i32>, 
-        weight: Option<f64>, 
-        duration: Option<i32>, 
-        distance: Option<f64>, 
-        rpe: Option<f64>, 
-        rir: Option<f64>, 
-        effective_reps: Option<i32>, 
-        cluster_id: Option<i64>, 
-        rest_seconds: Option<i32>, 
+        &self,
+        workout_exercise_id: i64,
+        set_number: i32,
+        reps: Option<i32>,
+        weight: Option<f64>,
+        duration: Option<i32>,
+        distance: Option<f64>,
+        rpe: Option<f64>,
+        rir: Option<f64>,
+        effective_reps: Option<i32>,
+        cluster_id: Option<i64>,
+        rest_seconds: Option<i32>,
         notes: Option<&str>,
         avg_heart_rate: Option<f64>,
         max_heart_rate: Option<f64>,
@@ -214,18 +266,22 @@ impl Repository {
     }
 
     pub async fn list_sets(&self, workout_exercise_id: i64) -> Result<Vec<ExerciseSet>> {
-        let sets = sqlx::query_as::<_, ExerciseSet>("SELECT * FROM exercise_sets WHERE workout_exercise_id = ? ORDER BY set_number")
-            .bind(workout_exercise_id)
-            .fetch_all(&self.pool)
-            .await?;
+        let sets = sqlx::query_as::<_, ExerciseSet>(
+            "SELECT * FROM exercise_sets WHERE workout_exercise_id = ? ORDER BY set_number",
+        )
+        .bind(workout_exercise_id)
+        .fetch_all(&self.pool)
+        .await?;
         Ok(sets)
     }
 
     pub async fn get_next_set_number(&self, workout_exercise_id: i64) -> Result<i32> {
-        let res = sqlx::query("SELECT MAX(set_number) as max_set FROM exercise_sets WHERE workout_exercise_id = ?")
-            .bind(workout_exercise_id)
-            .fetch_one(&self.pool)
-            .await?;
+        let res = sqlx::query(
+            "SELECT MAX(set_number) as max_set FROM exercise_sets WHERE workout_exercise_id = ?",
+        )
+        .bind(workout_exercise_id)
+        .fetch_one(&self.pool)
+        .await?;
         Ok(res.get::<Option<i32>, _>("max_set").unwrap_or(0) + 1)
     }
 
@@ -241,15 +297,13 @@ impl Repository {
             .bind(table_name)
             .fetch_optional(&self.pool)
             .await?;
-        
+
         match res {
             Some(row) => Ok(row.get::<i64, _>("seq") + 1),
             None => {
                 // If not in sqlite_sequence, check if table has any rows
                 let query = format!("SELECT MAX(id) as max_id FROM {}", table_name);
-                let res = sqlx::query(&query)
-                    .fetch_one(&self.pool)
-                    .await?;
+                let res = sqlx::query(&query).fetch_one(&self.pool).await?;
                 Ok(res.get::<Option<i64>, _>("max_id").unwrap_or(0) + 1)
             }
         }

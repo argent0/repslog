@@ -34,6 +34,18 @@ By default, `repslog` follows the XDG Base Directory Specification:
 - **Linux:** `~/.local/share/repslog/repslog.db`
 - **macOS:** `~/Library/Application Support/repslog/repslog.db`
 
+### Custom Database Location
+
+Use the global `--db` flag to specify a custom database file path. This is useful for testing, scripting isolation, or using multiple databases:
+
+```bash
+repslog --db /tmp/test-workouts.db init
+repslog --db ./my-training.db workout create --date 2026-01-01 --type "Test"
+repslog --db /tmp/test-workouts.db exercise list
+```
+
+The flag can appear before or after the subcommand.
+
 ## Verification
 
 After initialization, you can verify that the default exercises have been loaded:

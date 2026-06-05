@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
 use sqlx::types::Json;
+use sqlx::FromRow;
 
 #[derive(Debug, FromRow, Serialize, Deserialize)]
 pub struct Exercise {
@@ -50,12 +50,12 @@ pub struct HeartRateZones {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Lap {
-    pub lap_number: u16,           // 1-based
-    pub distance_km: f64,          // e.g. 1.0 or 0.98 for last lap
-    pub duration_seconds: u32,     // exact seconds for this lap
-    pub pace_min_per_km: f64,      // optional/calculated, stored for convenience
-    // Future-proof fields (add even if not used yet):
-    // pub avg_heart_rate_bpm: Option<u16>,
+    pub lap_number: u16,       // 1-based
+    pub distance_km: f64,      // e.g. 1.0 or 0.98 for last lap
+    pub duration_seconds: u32, // exact seconds for this lap
+    pub pace_min_per_km: f64,  // optional/calculated, stored for convenience
+                               // Future-proof fields (add even if not used yet):
+                               // pub avg_heart_rate_bpm: Option<u16>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]

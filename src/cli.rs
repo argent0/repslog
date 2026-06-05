@@ -1,10 +1,14 @@
-use clap::{Parser, Subcommand};
 use crate::models::{HeartRateZones, Laps};
+use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(name = "repslog")]
 #[command(about = "A Linux-first workout tracker", long_about = None)]
 pub struct Cli {
+    /// Path to SQLite database file (overrides default XDG location)
+    #[arg(long, global = true, value_name = "PATH")]
+    pub db: Option<String>,
+
     #[command(subcommand)]
     pub command: Commands,
 }
@@ -87,9 +91,7 @@ pub enum ExerciseAction {
         dry_run: bool,
     },
     /// Search for exercises
-    Search {
-        term: String,
-    },
+    Search { term: String },
 }
 
 #[derive(Subcommand)]
@@ -114,9 +116,7 @@ pub enum WorkoutAction {
         days: Option<i64>,
     },
     /// View details of a specific workout
-    View {
-        workout_id: i64,
-    },
+    View { workout_id: i64 },
     /// Update a workout
     Update {
         workout_id: String,
@@ -156,9 +156,7 @@ pub enum WorkoutExerciseAction {
         dry_run: bool,
     },
     /// List exercises in a workout
-    List {
-        workout_id: i64,
-    },
+    List { workout_id: i64 },
 }
 
 #[derive(Subcommand)]
@@ -260,9 +258,7 @@ pub enum SetAction {
         dry_run: bool,
     },
     /// List sets for a workout exercise
-    List {
-        workout_exercise_id: i64,
-    },
+    List { workout_exercise_id: i64 },
     /// Convenience: add exercise + first set in one go
     Quick {
         workout_id: String,

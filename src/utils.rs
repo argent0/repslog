@@ -1,7 +1,7 @@
-use std::io::{self, Read};
-use comfy_table::Table;
-use colored::*;
 use crate::models::HeartRateZones;
+use colored::*;
+use comfy_table::Table;
+use std::io::{self, Read};
 
 pub fn read_stdin() -> Option<String> {
     if !atty::is(atty::Stream::Stdin) {
@@ -43,7 +43,11 @@ pub fn format_pace(min_per_km: f64) -> String {
 }
 
 pub fn format_hr_zones_bar(zones: &HeartRateZones) -> String {
-    let total_secs: u32 = zones.z1_seconds + zones.z2_seconds + zones.z3_seconds + zones.z4_seconds + zones.z5_seconds;
+    let total_secs: u32 = zones.z1_seconds
+        + zones.z2_seconds
+        + zones.z3_seconds
+        + zones.z4_seconds
+        + zones.z5_seconds;
     if total_secs == 0 {
         return "No HR data".to_string();
     }
@@ -61,7 +65,8 @@ pub fn format_hr_zones_bar(zones: &HeartRateZones) -> String {
     let z4_w = (z4_p * width as f64).round() as usize;
     let z5_w = width.saturating_sub(z1_w + z2_w + z3_w + z4_w);
 
-    let bar = format!("{}{}{}{}{}", 
+    let bar = format!(
+        "{}{}{}{}{}",
         "█".repeat(z1_w).cyan(),
         "█".repeat(z2_w).green(),
         "█".repeat(z3_w).yellow(),
@@ -69,8 +74,14 @@ pub fn format_hr_zones_bar(zones: &HeartRateZones) -> String {
         "█".repeat(z5_w).red()
     );
 
-    format!("{} (Z1:{:.0}% Z2:{:.0}% Z3:{:.0}% Z4:{:.0}% Z5:{:.0}%)", 
-        bar, z1_p * 100.0, z2_p * 100.0, z3_p * 100.0, z4_p * 100.0, z5_p * 100.0
+    format!(
+        "{} (Z1:{:.0}% Z2:{:.0}% Z3:{:.0}% Z4:{:.0}% Z5:{:.0}%)",
+        bar,
+        z1_p * 100.0,
+        z2_p * 100.0,
+        z3_p * 100.0,
+        z4_p * 100.0,
+        z5_p * 100.0
     )
 }
 
@@ -94,7 +105,10 @@ pub fn parse_id(id_str: &str, dry_run: bool) -> Result<i64, crate::error::Repslo
         Ok(0)
     } else {
         id_str.parse::<i64>().map_err(|_| {
-            crate::error::RepslogError::Cli(format!("Invalid ID: '{}'. Must be an integer.", id_str))
+            crate::error::RepslogError::Cli(format!(
+                "Invalid ID: '{}'. Must be an integer.",
+                id_str
+            ))
         })
     }
 }

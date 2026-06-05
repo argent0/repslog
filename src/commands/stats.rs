@@ -1,6 +1,6 @@
 use crate::cli::StatsAction;
-use crate::repository::Repository;
 use crate::error::Result;
+use crate::repository::Repository;
 use crate::utils::print_table;
 use sqlx::Row;
 
@@ -13,7 +13,7 @@ pub async fn handle_stats(action: StatsAction, repo: &Repository) -> Result<()> 
                 query.push_str(&format!(" WHERE e.name LIKE '%{}%'", ex));
             }
             query.push_str(" GROUP BY e.name");
-            
+
             let res = sqlx::query(&query).fetch_all(&repo.pool).await?;
             let mut rows = Vec::new();
             for r in res {
@@ -22,7 +22,9 @@ pub async fn handle_stats(action: StatsAction, repo: &Repository) -> Result<()> 
                 let max_reps: Option<i32> = r.get("max_reps");
                 rows.push(vec![
                     name,
-                    max_weight.map(|w| format!("{:.2} kg", w)).unwrap_or_default(),
+                    max_weight
+                        .map(|w| format!("{:.2} kg", w))
+                        .unwrap_or_default(),
                     max_reps.map(|r| r.to_string()).unwrap_or_default(),
                 ]);
             }
@@ -37,12 +39,15 @@ pub async fn handle_stats(action: StatsAction, repo: &Repository) -> Result<()> 
                 "1y" => 365,
                 _ => 30,
             };
-            query.push_str(&format!(" WHERE w.started_at >= date('now', '-{} days')", days));
+            query.push_str(&format!(
+                " WHERE w.started_at >= date('now', '-{} days')",
+                days
+            ));
             if let Some(ex) = exercise {
                 query.push_str(&format!(" AND e.name LIKE '%{}%'", ex));
             }
             query.push_str(" GROUP BY e.name");
-            
+
             let res = sqlx::query(&query).fetch_all(&repo.pool).await?;
             let mut rows = Vec::new();
             for r in res {
@@ -55,7 +60,10 @@ pub async fn handle_stats(action: StatsAction, repo: &Repository) -> Result<()> 
                     eff_reps.map(|r| r.to_string()).unwrap_or_default(),
                 ]);
             }
-            print_table(vec!["Exercise", "Total Volume (kg * reps)", "Total Eff Reps"], rows);
+            print_table(
+                vec!["Exercise", "Total Volume (kg * reps)", "Total Eff Reps"],
+                rows,
+            );
         }
         StatsAction::Summary { days } => {
             println!("Summary for last {} days:", days);

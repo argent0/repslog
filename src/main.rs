@@ -1,10 +1,10 @@
 use clap::Parser;
-use repslog::cli::{Cli, Commands};
-use repslog::repository::Repository;
-use repslog::db::{setup_db, check_schema_version};
-use repslog::error::Result;
-use repslog::commands;
 use colored::*;
+use repslog::cli::{Cli, Commands};
+use repslog::commands;
+use repslog::db::{check_schema_version, setup_db};
+use repslog::error::Result;
+use repslog::repository::Repository;
 
 #[tokio::main]
 async fn main() {
@@ -16,7 +16,7 @@ async fn main() {
 }
 
 async fn run(cli: Cli) -> Result<()> {
-    let pool = setup_db().await?;
+    let pool = setup_db(cli.db.as_deref()).await?;
 
     // Handle commands that don't require an up-to-date schema
     match &cli.command {
@@ -24,7 +24,11 @@ async fn run(cli: Cli) -> Result<()> {
             commands::init::handle_init(&pool, *dry_run).await?;
             return Ok(());
         }
-        Commands::Migrate { status, dry_run, force } => {
+        Commands::Migrate {
+            status,
+            dry_run,
+            force,
+        } => {
             commands::migrate::handle_migrate(&pool, *status, *dry_run, *force).await?;
             return Ok(());
         }
