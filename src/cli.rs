@@ -187,6 +187,9 @@ pub enum SetAction {
         rest_seconds: Option<i32>,
         #[arg(short, long)]
         notes: Option<String>,
+        /// Side for unilateral training (left, right, both). Stored separately for grouping and totals.
+        #[arg(long, value_parser = ["left", "right", "both"])]
+        side: Option<String>,
         /// Average heart rate in bpm
         #[arg(long = "avg-heart-rate")]
         avg_heart_rate: Option<f64>,
@@ -232,6 +235,9 @@ pub enum SetAction {
         laps: Option<Laps>,
         #[arg(short, long)]
         notes: Option<String>,
+        /// Side for unilateral training (left, right, both)
+        #[arg(long, value_parser = ["left", "right", "both"])]
+        side: Option<String>,
         /// Show what would be added (no changes)
         #[arg(long)]
         dry_run: bool,
@@ -257,6 +263,9 @@ pub enum SetAction {
         rest_seconds: i32,
         #[arg(short, long)]
         notes: Option<String>,
+        /// Side for unilateral training (left, right, both)
+        #[arg(long, value_parser = ["left", "right", "both"])]
+        side: Option<String>,
         /// Show what would be added (no changes)
         #[arg(long)]
         dry_run: bool,
@@ -267,6 +276,84 @@ pub enum SetAction {
     Quick {
         workout_id: String,
         exercise_name_or_id: String,
+        /// Show what would be added (no changes)
+        #[arg(long)]
+        dry_run: bool,
+    },
+    /// Update any field on an existing set (reps, weight, notes, rir, side, etc.).
+    /// Example: repslog set update 287 --reps 10 --weight 20 --notes "Left leg" --side left
+    Update {
+        set_id: String,
+        #[arg(short, long)]
+        reps: Option<i32>,
+        #[arg(short, long)]
+        weight: Option<f64>,
+        #[arg(long)]
+        duration: Option<i32>,
+        #[arg(long)]
+        distance: Option<f64>,
+        #[arg(long)]
+        rpe: Option<f64>,
+        #[arg(long)]
+        rir: Option<f64>,
+        #[arg(long = "effective-reps")]
+        effective_reps: Option<i32>,
+        #[arg(long = "rest")]
+        rest_seconds: Option<i32>,
+        #[arg(short, long)]
+        notes: Option<String>,
+        /// Side: left | right | both
+        #[arg(long, value_parser = ["left", "right", "both"])]
+        side: Option<String>,
+        /// Show what would be updated (no changes)
+        #[arg(long)]
+        dry_run: bool,
+    },
+    /// Delete a specific set by ID. Asks for confirmation unless --force.
+    Delete {
+        set_id: String,
+        /// Skip confirmation prompt
+        #[arg(long)]
+        force: bool,
+        /// Show what would be deleted (no changes)
+        #[arg(long)]
+        dry_run: bool,
+    },
+    /// Reorder a set within its workout-exercise (changes display set number / order).
+    /// Useful after corrections or when logging out of sequence.
+    Move {
+        set_id: String,
+        /// Target 1-based position within the workout-exercise's sets
+        #[arg(long)]
+        to: i32,
+        /// Show what would be moved (no changes)
+        #[arg(long)]
+        dry_run: bool,
+    },
+    /// Add matching left + right (or both) sets in one go for unilateral work.
+    /// reps (and optional rir/effective-reps) are provided as comma lists, like add-cluster.
+    /// Example: repslog set add-unilateral 83 --reps "8,10,10,10" --weight 20 --side both
+    #[command(name = "add-unilateral")]
+    AddUnilateral {
+        workout_exercise_id: Option<String>,
+        /// Reps for the sets (comma-separated). One set per value will be created per side.
+        #[arg(short, long)]
+        reps: String,
+        #[arg(short, long)]
+        weight: Option<f64>,
+        /// RIR values (comma-separated, same length as reps)
+        #[arg(long)]
+        rir: Option<String>,
+        /// Effective-reps values (comma-separated)
+        #[arg(long = "effective-reps")]
+        effective_reps: Option<String>,
+        #[arg(long = "rest")]
+        rest_seconds: Option<i32>,
+        #[arg(short, long)]
+        notes: Option<String>,
+        /// left | right | both (both creates a left+right pair for each rep value)
+        #[arg(long, value_parser = ["left", "right", "both"], default_value = "both")]
+        side: String,
         /// Show what would be added (no changes)
         #[arg(long)]
         dry_run: bool,
@@ -291,5 +378,11 @@ pub enum StatsAction {
     Summary {
         #[arg(short, long, default_value_t = 30)]
         days: i64,
+    },
+    /// Weight progression / load history for a specific exercise (chronological).
+    /// Useful for tracking progressive overload on unilateral or bilateral lifts.
+    Weight {
+        #[arg(short, long)]
+        exercise: String,
     },
 }

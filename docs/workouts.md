@@ -34,6 +34,8 @@ repslog workout view <WORKOUT_ID>
 
 For cardio workouts, this view includes automated summaries, pace calculations, and heart rate zone bars.
 
+When logging unilateral work with `--side`, the view groups or clearly labels Left/Right sets, shows per-side rep totals, and respects logical ordering. Exercise-level notes (on the workout-exercise) and goal_reps (if set) are also displayed with actual vs goal progress.
+
 ## Updating a Workout
 
 You can update workout details like duration, feeling (1-5), or notes at any time:

@@ -5,7 +5,7 @@ A Linux-first command-line workout tracker designed for flexibility across stren
 ## Features
 - **SQLite Storage:** Local, single-file database (XDG compliant: `~/.local/share/repslog/`).
 - **Cardio First-Class Support:** Detailed tracking for runs (heart rate zones, pace, calories, and structured laps/splits).
-- **Advanced Strength Training:** Support for RPE, RIR, Effective Reps, and Rest-Pause/Cluster sets.
+- **Advanced Strength Training:** Support for RPE, RIR, Effective Reps, Rest-Pause/Cluster sets, and first-class unilateral (left/right) tracking with corrections (update/delete/move).
 - **Scriptable:** Non-interactive friendly; supports reading IDs from `stdin`.
 - **Beautiful Output:** Color-coded tabular views using `comfy-table` with dedicated, runner-friendly displays for cardio workouts including visual HR zone bars and lap breakdowns.
 

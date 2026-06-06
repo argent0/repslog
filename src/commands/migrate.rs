@@ -52,10 +52,9 @@ pub async fn handle_migrate(
             );
         } else {
             println!(
-                "{} ({}) {}",
+                "{} ({}). No changes needed.",
                 "Database is already at the latest version".green(),
                 current_version,
-                "No changes needed."
             );
         }
         return Ok(());

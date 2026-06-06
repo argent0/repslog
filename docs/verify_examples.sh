@@ -99,6 +99,41 @@ $REPSLOG set add-cardio $RUN_WE_ID \
 echo "Testing: repslog set list --json"
 $REPSLOG set list $WE_ID --json > /dev/null
 
+# Unilateral / side + corrections (new in unilateral improvement)
+echo "Testing: repslog set add with --side (unilateral)"
+SPLIT_WE=$($REPSLOG workout-exercise add $WORKOUT_ID "Bulgarian Split Squat")
+$REPSLOG set add $SPLIT_WE --reps 8 --weight 20 --side left
+$REPSLOG set add $SPLIT_WE --reps 8 --weight 20 --side right
+
+echo "Testing: repslog set update + side change + notes"
+# Take the first set ID from list (json) for the split
+FIRST_SET=$( $REPSLOG set list $SPLIT_WE --json | python3 -c '
+import json,sys
+data=json.load(sys.stdin)
+print(data[0]["id"] if data else "")
+' )
+if [ -n "$FIRST_SET" ]; then
+  $REPSLOG set update $FIRST_SET --reps 9 --notes "Felt strong on left" --side left
+fi
+
+echo "Testing: repslog set move (reorder)"
+# Move if we have at least two
+$REPSLOG set move $FIRST_SET --to 2 || true
+
+echo "Testing: repslog set delete --force"
+if [ -n "$FIRST_SET" ]; then
+  $REPSLOG set delete $FIRST_SET --force
+fi
+
+echo "Testing: repslog set list shows side/context"
+$REPSLOG set list $SPLIT_WE > /dev/null
+
+echo "Testing: repslog workout view (includes side grouping/totals)"
+$REPSLOG workout view $WORKOUT_ID > /dev/null
+
+echo "Testing: repslog stats weight (progression)"
+$REPSLOG stats weight --exercise "Squat (Barbell)" > /dev/null
+
 # 5. Stats
 echo "Testing: repslog stats prs"
 $REPSLOG stats prs --exercise "Squat (Barbell)" > /dev/null

@@ -58,7 +58,7 @@ pub async fn get_current_version(pool: &SqlitePool) -> Result<i32> {
         .fetch_optional(pool)
         .await?;
 
-    Ok(row.and_then(|r| Some(r.0)).unwrap_or(0))
+    Ok(row.map(|r| r.0).unwrap_or(0))
 }
 
 pub fn get_all_migrations() -> Result<Vec<Migration>> {

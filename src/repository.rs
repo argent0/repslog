@@ -14,6 +14,7 @@ impl Repository {
     }
 
     // --- Exercises ---
+    #[allow(clippy::too_many_arguments)]
     pub async fn add_exercise(
         &self,
         name: &str,
@@ -116,6 +117,7 @@ impl Repository {
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn update_workout(
         &self,
         id: i64,
@@ -193,6 +195,7 @@ impl Repository {
                         exercise_id: r.get("exercise_id"),
                         order: r.get("order"),
                         notes: r.get("notes"),
+                        goal_reps: r.get("goal_reps"),
                     },
                     r.get("exercise_name"),
                 )
@@ -212,6 +215,7 @@ impl Repository {
     }
 
     // --- Sets ---
+    #[allow(clippy::too_many_arguments)]
     pub async fn add_set(
         &self,
         workout_exercise_id: i64,
@@ -226,6 +230,7 @@ impl Repository {
         cluster_id: Option<i64>,
         rest_seconds: Option<i32>,
         notes: Option<&str>,
+        side: Option<&str>,
         avg_heart_rate: Option<f64>,
         max_heart_rate: Option<f64>,
         hr_zones: Option<Json<HeartRateZones>>,
@@ -239,9 +244,9 @@ impl Repository {
         }
         let res = sqlx::query("INSERT INTO exercise_sets (
             workout_exercise_id, set_number, reps, weight_kg, duration_seconds, distance_km, rpe, rir, 
-            effective_reps, cluster_id, rest_seconds, notes, avg_heart_rate_bpm, max_heart_rate_bpm, 
+            effective_reps, cluster_id, rest_seconds, notes, side, avg_heart_rate_bpm, max_heart_rate_bpm, 
             heart_rate_zones, avg_pace_min_per_km, calories_burned, laps
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
             .bind(workout_exercise_id)
             .bind(set_number)
             .bind(reps)
@@ -254,6 +259,7 @@ impl Repository {
             .bind(cluster_id)
             .bind(rest_seconds)
             .bind(notes)
+            .bind(side)
             .bind(avg_heart_rate)
             .bind(max_heart_rate)
             .bind(hr_zones)
@@ -266,8 +272,10 @@ impl Repository {
     }
 
     pub async fn list_sets(&self, workout_exercise_id: i64) -> Result<Vec<ExerciseSet>> {
+        // Logical order: left sets first, then right, then both/unspecified, then by set_number.
+        // This supports clean unilateral display without changing the meaning of set_number.
         let sets = sqlx::query_as::<_, ExerciseSet>(
-            "SELECT * FROM exercise_sets WHERE workout_exercise_id = ? ORDER BY set_number",
+            "SELECT * FROM exercise_sets WHERE workout_exercise_id = ? ORDER BY CASE COALESCE(side, '') WHEN 'left' THEN 0 WHEN 'right' THEN 1 WHEN 'both' THEN 2 ELSE 99 END, set_number",
         )
         .bind(workout_exercise_id)
         .fetch_all(&self.pool)
@@ -307,5 +315,129 @@ impl Repository {
                 Ok(res.get::<Option<i64>, _>("max_id").unwrap_or(0) + 1)
             }
         }
+    }
+
+    // --- Set management (update/delete/move for corrections and unilateral workflows) ---
+
+    pub async fn get_set(&self, id: i64) -> Result<Option<ExerciseSet>> {
+        Ok(
+            sqlx::query_as::<_, ExerciseSet>("SELECT * FROM exercise_sets WHERE id = ?")
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await?,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn update_set(
+        &self,
+        id: i64,
+        reps: Option<i32>,
+        weight: Option<f64>,
+        duration: Option<i32>,
+        distance: Option<f64>,
+        rpe: Option<f64>,
+        rir: Option<f64>,
+        effective_reps: Option<i32>,
+        rest_seconds: Option<i32>,
+        notes: Option<&str>,
+        side: Option<&str>,
+        dry_run: bool,
+    ) -> Result<()> {
+        if dry_run {
+            return Ok(());
+        }
+        sqlx::query(
+            "UPDATE exercise_sets SET \
+             reps = COALESCE(?, reps), \
+             weight_kg = COALESCE(?, weight_kg), \
+             duration_seconds = COALESCE(?, duration_seconds), \
+             distance_km = COALESCE(?, distance_km), \
+             rpe = COALESCE(?, rpe), \
+             rir = COALESCE(?, rir), \
+             effective_reps = COALESCE(?, effective_reps), \
+             rest_seconds = COALESCE(?, rest_seconds), \
+             notes = COALESCE(?, notes), \
+             side = COALESCE(?, side) \
+             WHERE id = ?",
+        )
+        .bind(reps)
+        .bind(weight)
+        .bind(duration)
+        .bind(distance)
+        .bind(rpe)
+        .bind(rir)
+        .bind(effective_reps)
+        .bind(rest_seconds)
+        .bind(notes)
+        .bind(side)
+        .bind(id)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn delete_set(&self, id: i64, dry_run: bool) -> Result<()> {
+        if dry_run {
+            return Ok(());
+        }
+        sqlx::query("DELETE FROM exercise_sets WHERE id = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    /// Reorder a set within its workout-exercise by cleanly renumbering 1..N.
+    /// new_position is 1-based (clamped to valid range).
+    pub async fn reorder_set(&self, set_id: i64, new_position: i32, dry_run: bool) -> Result<()> {
+        if dry_run {
+            return Ok(());
+        }
+
+        // Find the workout_exercise this set belongs to
+        let set_row = sqlx::query("SELECT workout_exercise_id FROM exercise_sets WHERE id = ?")
+            .bind(set_id)
+            .fetch_optional(&self.pool)
+            .await?;
+        let we_id: i64 = match set_row {
+            Some(r) => r.get("workout_exercise_id"),
+            None => return Ok(()), // nothing to do
+        };
+
+        // Load current sets in logical order (will respect side-aware ORDER BY in list_sets, but we use set_number primarily for relative intent)
+        let mut sets = self.list_sets(we_id).await?;
+        if sets.is_empty() {
+            return Ok(());
+        }
+
+        // Find index of the set to move
+        let idx = sets.iter().position(|s| s.id == set_id);
+        if idx.is_none() {
+            return Ok(());
+        }
+        let moving = sets.remove(idx.unwrap());
+
+        // Compute target index (0-based), clamp
+        let mut target_idx = (new_position - 1).max(0) as usize;
+        if target_idx > sets.len() {
+            target_idx = sets.len();
+        }
+        sets.insert(target_idx, moving);
+
+        // Renumber sequentially 1..N and persist
+        let mut tx = self.pool.begin().await?;
+        for (i, s) in sets.iter().enumerate() {
+            let new_num = (i as i32) + 1;
+            if new_num != s.set_number {
+                sqlx::query("UPDATE exercise_sets SET set_number = ? WHERE id = ?")
+                    .bind(new_num)
+                    .bind(s.id)
+                    .execute(&mut *tx)
+                    .await?;
+            }
+        }
+        tx.commit().await?;
+        Ok(())
     }
 }

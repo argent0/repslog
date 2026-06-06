@@ -42,8 +42,7 @@ async fn test_stats_prs() {
         None,
         None,
         None,
-        None,
-        None,
+        None, // side
         None,
         None,
         None,
@@ -66,8 +65,7 @@ async fn test_stats_prs() {
         None,
         None,
         None,
-        None,
-        None,
+        None, // side
         None,
         None,
         None,
@@ -124,8 +122,7 @@ async fn test_stats_volume() {
         None,
         None,
         None,
-        None,
-        None,
+        None, // side
         None,
         None,
         None,
@@ -148,8 +145,7 @@ async fn test_stats_volume() {
         None,
         None,
         None,
-        None,
-        None,
+        None, // side
         None,
         None,
         None,

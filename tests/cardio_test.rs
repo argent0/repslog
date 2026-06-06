@@ -75,6 +75,7 @@ async fn test_cardio_tracking() {
             None,
             None,
             Some("Nice run"),
+            None, // side
             avg_hr,
             max_hr,
             Some(Json(zones.clone())),

@@ -21,6 +21,7 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
             effective_reps,
             rest_seconds,
             notes,
+            side,
             avg_heart_rate,
             max_heart_rate,
             hr_zones,
@@ -40,13 +41,14 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
             };
             let id = parse_id(&id_str, dry_run)?;
 
-            // Validation: at least one metric must be provided
+            // Validation: at least one metric must be provided (weight is valid for strength/ progressive overload sets)
             if reps.is_none()
+                && weight.is_none()
                 && duration.is_none()
                 && distance.is_none()
                 && avg_heart_rate.is_none()
             {
-                return Err(RepslogError::Cli("At least one metric (reps, duration, distance, or heart rate) must be provided.".into()));
+                return Err(RepslogError::Cli("At least one metric (reps, weight, duration, distance, or heart rate) must be provided.".into()));
             }
 
             if let Some(ref laps_wrapper) = laps {
@@ -73,6 +75,7 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                     None, // cluster_id
                     rest_seconds,
                     notes.as_deref(),
+                    side.as_deref().map(|s| s.to_lowercase()).as_deref(),
                     avg_heart_rate,
                     max_heart_rate,
                     hr_zones.map(Json),
@@ -104,6 +107,7 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
             calories,
             laps,
             notes,
+            side,
             dry_run,
         } => {
             let id_str = if let Some(id) = workout_exercise_id {
@@ -141,6 +145,7 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                     None, // cluster_id
                     None, // rest_seconds
                     notes.as_deref(),
+                    side.as_deref().map(|s| s.to_lowercase()).as_deref(),
                     Some(avg_heart_rate),
                     Some(max_heart_rate),
                     Some(Json(hr_zones)),
@@ -169,6 +174,7 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
             effective_reps,
             rest_seconds,
             notes,
+            side,
             dry_run,
         } => {
             let id_str = if let Some(id) = workout_exercise_id {
@@ -218,8 +224,8 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
 
             for (i, ((r, ri), eff)) in reps_list
                 .into_iter()
-                .zip(rir_list.into_iter())
-                .zip(eff_list.into_iter())
+                .zip(rir_list)
+                .zip(eff_list)
                 .enumerate()
             {
                 let set_number = if dry_run && id_str.starts_with("DRY-RUN-") {
@@ -243,6 +249,7 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                         Some(cluster_id),
                         rest,
                         notes.as_deref(),
+                        side.as_deref().map(|s| s.to_lowercase()).as_deref(),
                         None,
                         None,
                         None,
@@ -301,9 +308,15 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                         "".to_string()
                     };
 
+                    let side_label = s
+                        .side
+                        .as_ref()
+                        .map(|sd| sd.to_uppercase())
+                        .unwrap_or_else(|| "-".to_string());
                     rows.push(vec![
                         s.id.to_string(),
                         format!("{}{}", s.set_number, cluster_label),
+                        side_label,
                         s.reps.map(|r| r.to_string()).unwrap_or_default(),
                         s.weight_kg
                             .map(|w| format!("{:.2} kg", w))
@@ -318,9 +331,15 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                         s.notes.as_ref().cloned().unwrap_or_default(),
                     ]);
                 }
+                // Basic context header (full exercise + workout date available via `workout view` or richer queries)
+                eprintln!(
+                    "Sets for workout-exercise {} ({} sets)",
+                    workout_exercise_id,
+                    sets.len()
+                );
                 print_table(
                     vec![
-                        "ID", "Set #", "Reps", "Weight", "Dist", "Dur", "Cardio", "Notes",
+                        "ID", "Set #", "Side", "Reps", "Weight", "Dist", "Dur", "Cardio", "Notes",
                     ],
                     rows,
                 );
@@ -346,6 +365,240 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                 }
             }
         }
+        SetAction::Update {
+            set_id,
+            reps,
+            weight,
+            duration,
+            distance,
+            rpe,
+            rir,
+            effective_reps,
+            rest_seconds,
+            notes,
+            side,
+            dry_run,
+        } => {
+            let id = parse_id(&set_id, dry_run)?;
+            // Verify exists for better error (and for dry-run to still validate)
+            let existing = repo.get_set(id).await?;
+            if existing.is_none() {
+                return Err(RepslogError::Cli(format!("Set {} not found", set_id)));
+            }
+            let side_norm = side.as_deref().map(|s| s.to_lowercase());
+            repo.update_set(
+                id,
+                reps,
+                weight,
+                duration,
+                distance,
+                rpe,
+                rir,
+                effective_reps,
+                rest_seconds,
+                notes.as_deref(),
+                side_norm.as_deref(),
+                dry_run,
+            )
+            .await?;
+            if json {
+                println!(r#"{{"success": true, "id": "{}"}}"#, set_id);
+            } else {
+                println!("Updated set {}", set_id);
+            }
+        }
+        SetAction::Delete {
+            set_id,
+            force,
+            dry_run,
+        } => {
+            let id = parse_id(&set_id, dry_run)?;
+            let existing = repo.get_set(id).await?;
+            if existing.is_none() {
+                return Err(RepslogError::Cli(format!("Set {} not found", set_id)));
+            }
+            if !force {
+                // Interactive confirmation unless non-tty or forced
+                if !atty::is(atty::Stream::Stdin) {
+                    return Err(RepslogError::Cli(
+                        "Refusing to delete without --force in non-interactive mode (pipe/redirect detected).".into(),
+                    ));
+                }
+                eprint!("Delete set {}? This cannot be undone. [y/N] ", set_id);
+                let mut input = String::new();
+                if std::io::stdin().read_line(&mut input).is_ok() {
+                    if !input.trim().eq_ignore_ascii_case("y") {
+                        println!("Aborted.");
+                        return Ok(());
+                    }
+                } else {
+                    return Err(RepslogError::Cli("Failed to read confirmation".into()));
+                }
+            }
+            repo.delete_set(id, dry_run).await?;
+            if json {
+                println!(r#"{{"success": true, "id": "{}"}}"#, set_id);
+            } else {
+                println!("Deleted set {}", set_id);
+            }
+        }
+        SetAction::Move {
+            set_id,
+            to,
+            dry_run,
+        } => {
+            let id = parse_id(&set_id, dry_run)?;
+            if to < 1 {
+                return Err(RepslogError::Cli("Target position must be >= 1".into()));
+            }
+            let existing = repo.get_set(id).await?;
+            if existing.is_none() {
+                return Err(RepslogError::Cli(format!("Set {} not found", set_id)));
+            }
+            repo.reorder_set(id, to, dry_run).await?;
+            if json {
+                println!(
+                    r#"{{"success": true, "id": "{}", "new_position": {}}}"#,
+                    set_id, to
+                );
+            } else {
+                println!("Moved set {} to position {}", set_id, to);
+            }
+        }
+        SetAction::AddUnilateral {
+            workout_exercise_id,
+            reps,
+            weight,
+            rir,
+            effective_reps,
+            rest_seconds,
+            notes,
+            side,
+            dry_run,
+        } => {
+            let id_str = if let Some(id) = workout_exercise_id {
+                id
+            } else if let Some(stdin_id) = read_stdin() {
+                stdin_id
+            } else {
+                return Err(RepslogError::Cli(
+                    "No workout-exercise-id provided. Use --help for examples.".into(),
+                ));
+            };
+            let id = parse_id(&id_str, dry_run)?;
+
+            let reps_list: Vec<i32> = reps
+                .split(',')
+                .map(|s| {
+                    s.trim()
+                        .parse()
+                        .map_err(|_| RepslogError::Cli(format!("Invalid reps: {}", s)))
+                })
+                .collect::<Result<_>>()?;
+
+            let rir_list: Vec<Option<f64>> = if let Some(r) = &rir {
+                r.split(',')
+                    .map(|s| {
+                        let t = s.trim();
+                        if t.is_empty() {
+                            Ok(None)
+                        } else {
+                            t.parse()
+                                .map(Some)
+                                .map_err(|_| RepslogError::Cli(format!("Invalid rir: {}", s)))
+                        }
+                    })
+                    .collect::<Result<_>>()?
+            } else {
+                vec![None; reps_list.len()]
+            };
+
+            let eff_list: Vec<Option<i32>> = if let Some(e) = &effective_reps {
+                e.split(',')
+                    .map(|s| {
+                        let t = s.trim();
+                        if t.is_empty() {
+                            Ok(None)
+                        } else {
+                            t.parse().map(Some).map_err(|_| {
+                                RepslogError::Cli(format!("Invalid effective-reps: {}", s))
+                            })
+                        }
+                    })
+                    .collect::<Result<_>>()?
+            } else {
+                vec![None; reps_list.len()]
+            };
+
+            if reps_list.len() != rir_list.len() || reps_list.len() != eff_list.len() {
+                return Err(RepslogError::Cli("reps, rir, and effective-reps lists must have matching lengths (or omit rir/eff)".into()));
+            }
+
+            let side_norm = side.to_lowercase();
+            let sides: Vec<&str> = match side_norm.as_str() {
+                "both" => vec!["left", "right"],
+                "left" | "right" => vec![side_norm.as_str()],
+                _ => {
+                    return Err(RepslogError::Cli(
+                        "side must be left, right, or both".into(),
+                    ))
+                }
+            };
+
+            let mut created = Vec::new();
+            for &sd in &sides {
+                for (i, &r) in reps_list.iter().enumerate() {
+                    let set_number = if dry_run && id_str.starts_with("DRY-RUN-") {
+                        // approximate; real sequencing happens in non-dry
+                        (i + 1) as i32
+                    } else {
+                        repo.get_next_set_number(id).await?
+                    };
+                    let ri = rir_list.get(i).and_then(|v| *v);
+                    let eff = eff_list.get(i).and_then(|v| *v);
+                    let rest = if i > 0 { rest_seconds } else { None };
+
+                    let set_id = repo
+                        .add_set(
+                            id,
+                            set_number,
+                            Some(r),
+                            weight,
+                            None,
+                            None,
+                            None,
+                            ri,
+                            eff,
+                            None,
+                            rest,
+                            notes.as_deref(),
+                            Some(sd),
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            dry_run,
+                        )
+                        .await?;
+                    created.push(format_dry_run_id(set_id, dry_run));
+                }
+            }
+            if json {
+                print_json(&created)?;
+            } else {
+                eprintln!(
+                    "Added {} unilateral set(s) to workout-exercise {}. IDs: {:?}",
+                    created.len(),
+                    id_str,
+                    created
+                );
+                for c in &created {
+                    println!("{}", c);
+                }
+            }
+        }
         SetAction::Quick {
             workout_id,
             exercise_name_or_id,
@@ -366,8 +619,9 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                     .await?;
                 let set_id = repo
                     .add_set(
-                        we_id, 1, None, None, None, None, None, None, None, None, None, None, None,
-                        None, None, None, None, None, dry_run,
+                        we_id, 1, None, None, None, None, None, None, None, None, None, None,
+                        None, // side
+                        None, None, None, None, None, None, dry_run,
                     )
                     .await?;
                 let formatted_set_id = format_dry_run_id(set_id, dry_run);
@@ -387,6 +641,7 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
     Ok(())
 }
 
+#[allow(clippy::explicit_counter_loop)]
 fn validate_laps(
     laps: &[Lap],
     total_distance: Option<f64>,
@@ -428,13 +683,11 @@ fn validate_laps(
     }
 
     if let Some(total_dur) = total_duration_seconds {
-        if sum_dur != total_dur {
-            if (sum_dur as i32 - total_dur as i32).abs() > 2 {
-                eprintln!(
-                    "Warning: Sum of lap durations ({}s) differs from total duration ({}s)",
-                    sum_dur, total_dur
-                );
-            }
+        if sum_dur != total_dur && (sum_dur as i32 - total_dur as i32).abs() > 2 {
+            eprintln!(
+                "Warning: Sum of lap durations ({}s) differs from total duration ({}s)",
+                sum_dur, total_dur
+            );
         }
     }
 

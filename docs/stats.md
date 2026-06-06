@@ -39,3 +39,13 @@ The summary includes:
 - Total volume moved (for strength).
 - Total distance covered (for cardio).
 - Average session feeling and duration.
+
+## Weight Progression
+
+See the load history for a specific exercise over time (great for tracking progressive overload on bilateral or unilateral lifts):
+
+```bash
+repslog stats weight --exercise "Bulgarian Split Squat"
+```
+
+Output is ordered by date and includes the set number, weight, reps, and any notes for that set.

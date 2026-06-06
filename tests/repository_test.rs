@@ -86,6 +86,11 @@ async fn test_workout_flow() {
             None,
             None,
             None,
+            None, // side
+            None,
+            None,
+            None,
+            None,
             None,
             None,
             false,
@@ -106,6 +111,11 @@ async fn test_workout_flow() {
             None,
             None,
             None,
+            None,
+            None,
+            None,
+            None,
+            None, // side
             None,
             None,
             None,
@@ -182,6 +192,7 @@ async fn test_new_set_fields() {
             cluster_id,
             rest_seconds,
             Some("Test notes"),
+            None, // side
             None,
             None,
             None,

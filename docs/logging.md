@@ -78,3 +78,42 @@ To see all sets for a specific workout-exercise:
 ```bash
 repslog set list <WE_ID>
 ```
+
+## Corrections: Update, Delete, Move
+
+Mistakes happen (especially during unilateral sessions). Use these commands to fix without deleting the whole workout.
+
+```bash
+repslog set update 287 --reps 10 --weight 20 --notes "Left leg" --side left
+repslog set move 287 --to 1
+repslog set delete 287 --force   # --force skips the confirmation prompt
+```
+
+- `set update` accepts any combination of fields (reps, weight, rir, notes, side, rest, etc.).
+- `set delete` asks for confirmation in interactive terminals unless `--force`.
+- `set move` reorders within the workout-exercise (renumbers cleanly 1..N).
+
+## Unilateral / Side Tracking
+
+Add `--side left|right|both` when logging.
+
+```bash
+repslog set add 84 --reps 6 --weight 20 --side left
+repslog set add 84 --reps 6 --weight 20 --side right
+```
+
+`workout view` will show a Side column, list sets in logical order (left before right), and print per-side rep totals when sides are present.
+
+For quick symmetric work:
+
+```bash
+repslog set add-unilateral 83 --reps "8,10,10,10" --weight 20 --side both
+```
+
+This creates left+right pairs (or all left / all right if you specify).
+
+Weight-only sets (no reps) are supported for load tracking / progressive overload:
+
+```bash
+repslog set add 99 --weight 22.5
+```

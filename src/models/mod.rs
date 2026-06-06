@@ -32,6 +32,7 @@ pub struct WorkoutExercise {
     pub exercise_id: i64,
     pub order: i32,
     pub notes: Option<String>,
+    pub goal_reps: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
@@ -76,6 +77,7 @@ pub struct ExerciseSet {
     pub cluster_id: Option<i64>,
     pub rest_seconds: Option<i32>,
     pub notes: Option<String>,
+    pub side: Option<String>,
     pub extra_metrics: Option<String>,
     pub avg_heart_rate_bpm: Option<f64>,
     pub max_heart_rate_bpm: Option<f64>,

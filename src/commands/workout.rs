@@ -302,12 +302,28 @@ pub async fn handle_workout(action: WorkoutAction, repo: &Repository, json: bool
                     println!("\n{}", "EXERCISES".bold().yellow());
                     for (we, name) in exercises {
                         println!("\n{} (WE ID: {})", name.bold(), we.id.to_string().dimmed());
-                        if let Some(notes) = we.notes {
+                        if let Some(ref notes) = we.notes {
                             println!("Notes: {}", notes);
                         }
                         let sets = repo.list_sets(we.id).await?;
                         let mut set_rows = Vec::new();
+                        let mut left_reps = 0i32;
+                        let mut right_reps = 0i32;
+                        let mut both_or_unspec_reps = 0i32;
+                        let mut has_side = false;
+
                         for s in &sets {
+                            if let Some(ref sd) = s.side {
+                                has_side = true;
+                                match sd.as_str() {
+                                    "left" => left_reps += s.reps.unwrap_or(0),
+                                    "right" => right_reps += s.reps.unwrap_or(0),
+                                    _ => both_or_unspec_reps += s.reps.unwrap_or(0),
+                                }
+                            } else {
+                                both_or_unspec_reps += s.reps.unwrap_or(0);
+                            }
+
                             let cluster_label = if let Some(cid) = s.cluster_id {
                                 format!(" [C{}]", cid)
                             } else {
@@ -351,14 +367,48 @@ pub async fn handle_workout(action: WorkoutAction, repo: &Repository, json: bool
                                 "".to_string()
                             };
 
+                            let side_label = s
+                                .side
+                                .as_ref()
+                                .map(|sd| sd.to_uppercase())
+                                .unwrap_or_else(|| "-".to_string());
                             set_rows.push(vec![
                                 s.set_number.to_string() + &cluster_label,
+                                side_label,
                                 details.join(" • "),
                                 cardio_info.dimmed().to_string(),
                                 s.notes.as_ref().cloned().unwrap_or_default(),
                             ]);
                         }
-                        print_table(vec!["Set #", "Details", "Cardio", "Notes"], set_rows);
+
+                        if we.notes.is_some() || has_side || we.goal_reps.is_some() {
+                            // already printed notes above; add side totals if relevant
+                            if has_side || we.goal_reps.is_some() {
+                                let mut summary_parts = Vec::new();
+                                if left_reps > 0 || right_reps > 0 {
+                                    summary_parts.push(format!(
+                                        "Left: {} reps | Right: {} reps",
+                                        left_reps, right_reps
+                                    ));
+                                }
+                                if both_or_unspec_reps > 0 && (left_reps > 0 || right_reps > 0) {
+                                    summary_parts
+                                        .push(format!("Other: {} reps", both_or_unspec_reps));
+                                }
+                                if let Some(g) = we.goal_reps {
+                                    let actual = left_reps + right_reps + both_or_unspec_reps;
+                                    summary_parts.push(format!("Goal: {} | Actual: {}", g, actual));
+                                }
+                                if !summary_parts.is_empty() {
+                                    println!("  {}", summary_parts.join("  •  ").dimmed());
+                                }
+                            }
+                        }
+
+                        print_table(
+                            vec!["Set #", "Side", "Details", "Cardio", "Notes"],
+                            set_rows,
+                        );
                     }
                 }
             } else {

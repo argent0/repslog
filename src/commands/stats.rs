@@ -136,6 +136,52 @@ pub async fn handle_stats(action: StatsAction, repo: &Repository, json: bool) ->
                 }
             }
         }
+        StatsAction::Weight { exercise } => {
+            // Basic weight progression: join to get workout date + sets with weight for the exercise
+            let query = "SELECT w.started_at, es.set_number, es.weight_kg, es.reps, es.notes \
+                         FROM exercise_sets es \
+                         JOIN workout_exercises we ON es.workout_exercise_id = we.id \
+                         JOIN exercises e ON we.exercise_id = e.id \
+                         JOIN workouts w ON we.workout_id = w.id \
+                         WHERE e.name LIKE ? AND es.weight_kg IS NOT NULL \
+                         ORDER BY w.started_at ASC, es.set_number ASC";
+            let like = format!("%{}%", exercise);
+            let res = sqlx::query(query).bind(&like).fetch_all(&repo.pool).await?;
+            #[derive(Serialize)]
+            struct Load {
+                date: String,
+                set: i32,
+                weight_kg: f64,
+                reps: Option<i32>,
+                notes: Option<String>,
+            }
+            let mut loads = Vec::new();
+            for r in res {
+                loads.push(Load {
+                    date: r.get("started_at"),
+                    set: r.get("set_number"),
+                    weight_kg: r.get("weight_kg"),
+                    reps: r.get("reps"),
+                    notes: r.get("notes"),
+                });
+            }
+            if json {
+                print_json(&loads)?;
+            } else {
+                println!("Weight history for exercises matching '{}':", exercise);
+                let mut rows = Vec::new();
+                for l in &loads {
+                    rows.push(vec![
+                        l.date.clone(),
+                        l.set.to_string(),
+                        format!("{:.2} kg", l.weight_kg),
+                        l.reps.map(|r| r.to_string()).unwrap_or_default(),
+                        l.notes.clone().unwrap_or_default(),
+                    ]);
+                }
+                print_table(vec!["Date", "Set", "Weight", "Reps", "Notes"], rows);
+            }
+        }
     }
     Ok(())
 }
