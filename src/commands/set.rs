@@ -3,11 +3,12 @@ use crate::error::{RepslogError, Result};
 use crate::models::Lap;
 use crate::repository::Repository;
 use crate::utils::{
-    format_dry_run_id, format_duration, format_pace, parse_id, print_table, read_stdin,
+    format_dry_run_id, format_duration, format_pace, parse_id, print_id, print_json, print_table,
+    read_stdin,
 };
 use sqlx::types::Json;
 
-pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
+pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Result<()> {
     match action {
         SetAction::Add {
             workout_exercise_id,
@@ -82,11 +83,15 @@ pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
                 )
                 .await?;
             let formatted_set_id = format_dry_run_id(set_id, dry_run);
-            eprintln!(
-                "Added set {} to workout-exercise {} with set ID {}",
-                set_number, id_str, formatted_set_id
-            );
-            println!("{}", formatted_set_id);
+            if json {
+                print_id(&formatted_set_id, true);
+            } else {
+                eprintln!(
+                    "Added set {} to workout-exercise {} with set ID {}",
+                    set_number, id_str, formatted_set_id
+                );
+                println!("{}", formatted_set_id);
+            }
         }
         SetAction::AddCardio {
             workout_exercise_id,
@@ -146,11 +151,15 @@ pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
                 )
                 .await?;
             let formatted_set_id = format_dry_run_id(set_id, dry_run);
-            eprintln!(
-                "Added cardio set {} to workout-exercise {} with set ID {}",
-                set_number, id_str, formatted_set_id
-            );
-            println!("{}", formatted_set_id);
+            if json {
+                print_id(&formatted_set_id, true);
+            } else {
+                eprintln!(
+                    "Added cardio set {} to workout-exercise {} with set ID {}",
+                    set_number, id_str, formatted_set_id
+                );
+                println!("{}", formatted_set_id);
+            }
         }
         SetAction::AddCluster {
             workout_exercise_id,
@@ -246,85 +255,93 @@ pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
                 set_ids.push(format_dry_run_id(set_id, dry_run));
             }
             let formatted_cluster_id = format_dry_run_id(cluster_id, dry_run);
-            eprintln!(
-                "Added cluster {} with {} sets to workout-exercise {}. Set IDs: {:?}",
-                formatted_cluster_id,
-                set_ids.len(),
-                id_str,
-                set_ids
-            );
-            println!("{}", formatted_cluster_id);
+            if json {
+                print_id(&formatted_cluster_id, true);
+            } else {
+                eprintln!(
+                    "Added cluster {} with {} sets to workout-exercise {}. Set IDs: {:?}",
+                    formatted_cluster_id,
+                    set_ids.len(),
+                    id_str,
+                    set_ids
+                );
+                println!("{}", formatted_cluster_id);
+            }
         }
         SetAction::List {
             workout_exercise_id,
         } => {
             let sets = repo.list_sets(workout_exercise_id).await?;
-            let mut rows = Vec::new();
-            for s in sets.iter() {
-                let cluster_label = if let Some(cid) = s.cluster_id {
-                    format!(" [C{}]", cid)
-                } else {
-                    "".to_string()
-                };
+            if json {
+                print_json(&sets)?;
+            } else {
+                let mut rows = Vec::new();
+                for s in sets.iter() {
+                    let cluster_label = if let Some(cid) = s.cluster_id {
+                        format!(" [C{}]", cid)
+                    } else {
+                        "".to_string()
+                    };
 
-                let cardio_info = if s.avg_heart_rate_bpm.is_some() {
-                    format!(
-                        "HR: {}/{} bpm | Pace: {} | Cal: {}",
-                        s.avg_heart_rate_bpm
-                            .map(|v| v.to_string())
-                            .unwrap_or_default(),
-                        s.max_heart_rate_bpm
-                            .map(|v| v.to_string())
-                            .unwrap_or_default(),
-                        s.avg_pace_min_per_km
-                            .map(|v| v.to_string())
-                            .unwrap_or_default(),
-                        s.calories_burned.map(|v| v.to_string()).unwrap_or_default()
-                    )
-                } else {
-                    "".to_string()
-                };
+                    let cardio_info = if s.avg_heart_rate_bpm.is_some() {
+                        format!(
+                            "HR: {}/{} bpm | Pace: {} | Cal: {}",
+                            s.avg_heart_rate_bpm
+                                .map(|v| v.to_string())
+                                .unwrap_or_default(),
+                            s.max_heart_rate_bpm
+                                .map(|v| v.to_string())
+                                .unwrap_or_default(),
+                            s.avg_pace_min_per_km
+                                .map(|v| v.to_string())
+                                .unwrap_or_default(),
+                            s.calories_burned.map(|v| v.to_string()).unwrap_or_default()
+                        )
+                    } else {
+                        "".to_string()
+                    };
 
-                rows.push(vec![
-                    s.id.to_string(),
-                    format!("{}{}", s.set_number, cluster_label),
-                    s.reps.map(|r| r.to_string()).unwrap_or_default(),
-                    s.weight_kg
-                        .map(|w| format!("{:.2} kg", w))
-                        .unwrap_or_default(),
-                    s.distance_km
-                        .map(|d| format!("{:.2} km", d))
-                        .unwrap_or_default(),
-                    s.duration_seconds
-                        .map(|d| format!("{}s", d))
-                        .unwrap_or_default(),
-                    cardio_info,
-                    s.notes.as_ref().cloned().unwrap_or_default(),
-                ]);
-            }
-            print_table(
-                vec![
-                    "ID", "Set #", "Reps", "Weight", "Dist", "Dur", "Cardio", "Notes",
-                ],
-                rows,
-            );
+                    rows.push(vec![
+                        s.id.to_string(),
+                        format!("{}{}", s.set_number, cluster_label),
+                        s.reps.map(|r| r.to_string()).unwrap_or_default(),
+                        s.weight_kg
+                            .map(|w| format!("{:.2} kg", w))
+                            .unwrap_or_default(),
+                        s.distance_km
+                            .map(|d| format!("{:.2} km", d))
+                            .unwrap_or_default(),
+                        s.duration_seconds
+                            .map(|d| format!("{}s", d))
+                            .unwrap_or_default(),
+                        cardio_info,
+                        s.notes.as_ref().cloned().unwrap_or_default(),
+                    ]);
+                }
+                print_table(
+                    vec![
+                        "ID", "Set #", "Reps", "Weight", "Dist", "Dur", "Cardio", "Notes",
+                    ],
+                    rows,
+                );
 
-            // Show Laps if available
-            for s in sets {
-                if let Some(laps_json) = s.laps {
-                    let laps = laps_json.0;
-                    if !laps.is_empty() {
-                        println!("\nLap Breakdown (Set {}):", s.set_number);
-                        let mut lap_rows = Vec::new();
-                        for lap in laps {
-                            lap_rows.push(vec![
-                                format!("Lap {}", lap.lap_number),
-                                format!("{:.2} km", lap.distance_km),
-                                format_duration(lap.duration_seconds),
-                                format_pace(lap.pace_min_per_km),
-                            ]);
+                // Show Laps if available
+                for s in sets {
+                    if let Some(laps_json) = s.laps {
+                        let laps = laps_json.0;
+                        if !laps.is_empty() {
+                            println!("\nLap Breakdown (Set {}):", s.set_number);
+                            let mut lap_rows = Vec::new();
+                            for lap in laps {
+                                lap_rows.push(vec![
+                                    format!("Lap {}", lap.lap_number),
+                                    format!("{:.2} km", lap.distance_km),
+                                    format_duration(lap.duration_seconds),
+                                    format_pace(lap.pace_min_per_km),
+                                ]);
+                            }
+                            print_table(vec!["Lap", "Distance", "Time", "Pace"], lap_rows);
                         }
-                        print_table(vec!["Lap", "Distance", "Time", "Pace"], lap_rows);
                     }
                 }
             }
@@ -354,10 +371,14 @@ pub async fn handle_set(action: SetAction, repo: &Repository) -> Result<()> {
                     )
                     .await?;
                 let formatted_set_id = format_dry_run_id(set_id, dry_run);
-                println!(
-                    "Added exercise {} to workout {} and created first set with ID {}",
-                    ex.name, workout_id, formatted_set_id
-                );
+                if json {
+                    print_id(&formatted_set_id, true);
+                } else {
+                    println!(
+                        "Added exercise {} to workout {} and created first set with ID {}",
+                        ex.name, workout_id, formatted_set_id
+                    );
+                }
             } else {
                 println!("Exercise not found: {}", exercise_name_or_id);
             }

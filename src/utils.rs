@@ -1,6 +1,7 @@
 use crate::models::HeartRateZones;
 use colored::*;
 use comfy_table::Table;
+use serde::Serialize;
 use std::io::{self, Read};
 
 pub fn read_stdin() -> Option<String> {
@@ -110,6 +111,23 @@ pub fn parse_id(id_str: &str, dry_run: bool) -> Result<i64, crate::error::Repslo
                 id_str
             ))
         })
+    }
+}
+
+/// Print a serializable value as pretty JSON to stdout.
+pub fn print_json<T: Serialize>(value: &T) -> crate::error::Result<()> {
+    let s = serde_json::to_string_pretty(value)?;
+    println!("{}", s);
+    Ok(())
+}
+
+/// Print a bare ID (for create/add results used in piping) or JSON {"id": "..."} when json=true.
+/// Uses string for id to uniformly support DRY-RUN-N values.
+pub fn print_id(id: &str, json: bool) {
+    if json {
+        println!(r#"{{"id": "{}"}}"#, id);
+    } else {
+        println!("{}", id);
     }
 }
 

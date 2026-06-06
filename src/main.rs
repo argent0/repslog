@@ -16,12 +16,13 @@ async fn main() {
 }
 
 async fn run(cli: Cli) -> Result<()> {
+    let json = cli.json;
     let pool = setup_db(cli.db.as_deref()).await?;
 
     // Handle commands that don't require an up-to-date schema
     match &cli.command {
         Commands::Init { dry_run } => {
-            commands::init::handle_init(&pool, *dry_run).await?;
+            commands::init::handle_init(&pool, *dry_run, json).await?;
             return Ok(());
         }
         Commands::Migrate {
@@ -29,7 +30,7 @@ async fn run(cli: Cli) -> Result<()> {
             dry_run,
             force,
         } => {
-            commands::migrate::handle_migrate(&pool, *status, *dry_run, *force).await?;
+            commands::migrate::handle_migrate(&pool, *status, *dry_run, *force, json).await?;
             return Ok(());
         }
         _ => {
@@ -42,22 +43,22 @@ async fn run(cli: Cli) -> Result<()> {
 
     match cli.command {
         Commands::Exercise { action } => {
-            commands::exercise::handle_exercise(action, &repo).await?;
+            commands::exercise::handle_exercise(action, &repo, json).await?;
         }
         Commands::Workout { action } => {
-            commands::workout::handle_workout(action, &repo).await?;
+            commands::workout::handle_workout(action, &repo, json).await?;
         }
         Commands::Session { action } => {
-            commands::workout::handle_workout(action, &repo).await?;
+            commands::workout::handle_workout(action, &repo, json).await?;
         }
         Commands::WorkoutExercise { action } => {
-            commands::workout::handle_workout_exercise(action, &repo).await?;
+            commands::workout::handle_workout_exercise(action, &repo, json).await?;
         }
         Commands::Set { action } => {
-            commands::set::handle_set(action, &repo).await?;
+            commands::set::handle_set(action, &repo, json).await?;
         }
         Commands::Stats { action } => {
-            commands::stats::handle_stats(action, &repo).await?;
+            commands::stats::handle_stats(action, &repo, json).await?;
         }
         _ => unreachable!(),
     }

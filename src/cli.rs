@@ -9,6 +9,10 @@ pub struct Cli {
     #[arg(long, global = true, value_name = "PATH")]
     pub db: Option<String>,
 
+    /// Output results in JSON format instead of human-readable tables
+    #[arg(long, global = true)]
+    pub json: bool,
+
     #[command(subcommand)]
     pub command: Commands,
 }

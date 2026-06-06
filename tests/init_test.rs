@@ -9,7 +9,7 @@ async fn test_handle_init() {
     let pool = setup_test_db().await.unwrap();
 
     // Initializing with handle_init
-    handle_init(&pool, false).await.unwrap();
+    handle_init(&pool, false, false).await.unwrap();
 
     let repo = Repository::new(pool);
     let exercises = repo.list_exercises(None, None).await.unwrap();
@@ -19,6 +19,13 @@ async fn test_handle_init() {
     assert!(exercises.iter().any(|e| e.name == "Pullups"));
     assert!(exercises.iter().any(|e| e.name == "Bench Press"));
     assert!(exercises.len() >= 11);
+}
+
+#[tokio::test]
+async fn test_handle_init_json() {
+    let pool = setup_test_db().await.unwrap();
+    // Should not panic, and produce json (printed but test just checks no error)
+    handle_init(&pool, false, true).await.unwrap();
 }
 
 /// Helper to get a unique temp db path for testing custom --db
@@ -45,7 +52,7 @@ async fn test_setup_db_with_custom_path() {
         let pool = repslog::db::setup_db(Some(path_str)).await.unwrap();
 
         // Run init which applies migrations + seeds (setup_db only creates migrations table)
-        handle_init(&pool, false).await.unwrap();
+        handle_init(&pool, false, false).await.unwrap();
 
         // File should now exist
         assert!(db_path.exists(), "custom db file should be created");

@@ -42,6 +42,30 @@ ZONES=$(jq -n --arg z2 1800 '{"z2_seconds": ($z2|tonumber)}')
 repslog set add-cardio <WE_ID> --distance 5 --duration 1500 --hr-zones "$ZONES"
 ```
 
+## JSON Output with --json
+
+Use the global `--json` flag on read commands (list, view, stats, etc.) and ID-producing commands to get structured machine-readable output. This is ideal for scripting with `jq`.
+
+```bash
+# List as JSON array
+repslog exercise list --json
+
+# Get a workout with full nested exercises and sets
+repslog workout view 1 --json | jq '.exercises[0].sets'
+
+# Stats as JSON
+repslog stats prs --json
+repslog stats summary --days 7 --json
+
+# Capture IDs from JSON output (works with dry-run too)
+WORKOUT_ID=$(repslog workout create --date "2026-04-23" --json | jq -r '.id')
+echo "Created $WORKOUT_ID"
+```
+
+Mutation commands that normally print bare IDs (for piping) will output `{"id": "N"}` (or `{"id": "DRY-RUN-N"}`) when `--json` is used.
+
+Migrate status and init also support `--json`.
+
 ## Non-Interactive Errors
 
 When `repslog` is used in a script, it will exit with a non-zero status code if an error occurs, allowing your scripts to handle failures gracefully.

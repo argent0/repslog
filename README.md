@@ -20,6 +20,8 @@ All commands that modify the database support a `--dry-run` flag to preview chan
 
 The `--db <PATH>` global option lets you target a specific SQLite file (handy for testing or isolated runs): `repslog --db /tmp/test.db ...`
 
+The `--json` global option makes list/view/stats/create output machine-readable JSON (for use with `jq` etc.).
+
 ### 1. Initialize
 Sets up the database and seeds default exercises.
 ```bash

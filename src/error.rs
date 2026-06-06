@@ -17,6 +17,9 @@ pub enum RepslogError {
     #[error("CLI error: {0}")]
     Cli(String),
 
+    #[error("JSON serialization error: {0}")]
+    Json(#[from] serde_json::Error),
+
     #[error("Other: {0}")]
     Other(String),
 }

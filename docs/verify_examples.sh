@@ -22,8 +22,19 @@ $REPSLOG init
 echo "Testing: repslog exercise list"
 $REPSLOG exercise list > /dev/null
 
+echo "Testing: repslog exercise list --json"
+$REPSLOG exercise list --json | python3 -c '
+import json, sys
+data = json.load(sys.stdin)
+assert isinstance(data, list), "exercise list --json should be array"
+print("  json ok, count:", len(data))
+' > /dev/null
+
 echo "Testing: repslog exercise search"
 $REPSLOG exercise search "Squat" > /dev/null
+
+echo "Testing: repslog exercise search --json"
+$REPSLOG exercise search "Squat" --json > /dev/null
 
 echo "Testing: repslog exercise add"
 $REPSLOG exercise add "Bulgarian Split Squat" \
@@ -40,12 +51,26 @@ echo "Created workout ID: $WORKOUT_ID"
 echo "Testing: repslog workout list"
 $REPSLOG workout list --days 7 > /dev/null
 
+echo "Testing: repslog workout list --json"
+$REPSLOG workout list --days 7 --json > /dev/null
+
 echo "Testing: repslog workout view"
 $REPSLOG workout view $WORKOUT_ID > /dev/null
+
+echo "Testing: repslog workout view --json"
+$REPSLOG workout view $WORKOUT_ID --json | python3 -c '
+import json, sys
+data = json.load(sys.stdin)
+assert "id" in data and "exercises" in data, "workout view json shape"
+print("  json ok")
+' > /dev/null
 
 echo "Testing: repslog workout-exercise add"
 WE_ID=$($REPSLOG workout-exercise add $WORKOUT_ID "Squat (Barbell)")
 echo "Created Workout-Exercise ID: $WE_ID"
+
+echo "Testing: repslog workout-exercise list --json"
+$REPSLOG workout-exercise list $WORKOUT_ID --json > /dev/null
 
 # 4. Logging Sets
 echo "Testing: repslog set add"
@@ -71,20 +96,44 @@ $REPSLOG set add-cardio $RUN_WE_ID \
   --calories 300 \
   --hr-zones '{"z1_seconds": 300, "z2_seconds": 600, "z3_seconds": 600}'
 
+echo "Testing: repslog set list --json"
+$REPSLOG set list $WE_ID --json > /dev/null
+
 # 5. Stats
 echo "Testing: repslog stats prs"
 $REPSLOG stats prs --exercise "Squat (Barbell)" > /dev/null
 
+echo "Testing: repslog stats prs --json"
+$REPSLOG stats prs --exercise "Squat (Barbell)" --json > /dev/null
+
 echo "Testing: repslog stats volume"
 $REPSLOG stats volume --period 30d > /dev/null
 
+echo "Testing: repslog stats volume --json"
+$REPSLOG stats volume --period 30d --json > /dev/null
+
 echo "Testing: repslog stats summary"
 $REPSLOG stats summary --days 30 > /dev/null
+
+echo "Testing: repslog stats summary --json"
+$REPSLOG stats summary --days 30 --json > /dev/null
+
+echo "Testing: repslog migrate --status --json"
+$REPSLOG migrate --status --json > /dev/null
 
 # 6. Scripting / Piping
 echo "Testing: piping workout create to workout-exercise add using xargs"
 NEW_WORKOUT_ID=$($REPSLOG workout create --date "2026-04-24" --type "Push")
 echo "$NEW_WORKOUT_ID" | xargs -I {} $REPSLOG workout-exercise add {} "Pushups" > /dev/null
+
+echo "Testing: workout create --json (for jq scripting)"
+JSON_CREATED=$($REPSLOG workout create --date "2026-04-25" --type "Pull" --json)
+python3 -c '
+import json, sys
+obj = json.loads(sys.argv[1])
+assert "id" in obj
+print("  json create id:", obj["id"])
+' "$JSON_CREATED" > /dev/null
 
 echo "Testing: piping workout-exercise add to set add (stdin supported)"
 WE_ID=$($REPSLOG workout-exercise add 1 "Dips")

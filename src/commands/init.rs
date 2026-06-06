@@ -3,8 +3,10 @@ use crate::error::Result;
 use crate::repository::Repository;
 use sqlx::sqlite::SqlitePool;
 
-pub async fn handle_init(pool: &SqlitePool, dry_run: bool) -> Result<()> {
-    println!("Initializing database...");
+pub async fn handle_init(pool: &SqlitePool, dry_run: bool, json: bool) -> Result<()> {
+    if !json {
+        println!("Initializing database...");
+    }
     if !dry_run {
         run_migrations(pool, false).await?;
     }
@@ -91,15 +93,35 @@ pub async fn handle_init(pool: &SqlitePool, dry_run: bool) -> Result<()> {
         ),
     ];
 
+    let mut added = Vec::new();
     for (name, category, muscles, equipment, desc) in default_exercises {
         let existing = repo.list_exercises(Some(name.to_string()), None).await?;
         if existing.is_empty() {
             repo.add_exercise(name, category, muscles, equipment, desc, false, dry_run)
                 .await?;
-            println!("Added exercise: {}", name);
+            if !json {
+                println!("Added exercise: {}", name);
+            }
+            added.push(name.to_string());
         }
     }
 
-    println!("Initialization complete!");
+    if json {
+        #[derive(serde::Serialize)]
+        struct InitResult {
+            success: bool,
+            dry_run: bool,
+            added_exercises: Vec<String>,
+        }
+        // use crate utils? but to avoid, direct
+        let s = serde_json::to_string_pretty(&InitResult {
+            success: true,
+            dry_run,
+            added_exercises: added,
+        })?;
+        println!("{}", s);
+    } else {
+        println!("Initialization complete!");
+    }
     Ok(())
 }
