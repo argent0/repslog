@@ -40,8 +40,8 @@ repslog exercise search "Squat"
 repslog exercise add "Bulgarian Split Squat" --category strength --equipment dumbbell --muscles "quads,glutes"
 ```
 
-# Workouts (Sessions)
-Workouts are the top-level containers for your training.
+### 3. Workouts (Sessions)
+Workouts are the top-level containers for your training. `workout create` is step 1 only — you must add exercises and log sets afterward. See `docs/workouts.md` (Data Entry Best Practices) and `docs/logging.md` for the full workflow.
 ```bash
 # Create a new workout (date is mandatory: YYYY-MM-DD)
 repslog workout create --type "Legs" --date "2026-04-23" --notes "Focus on form"
@@ -76,10 +76,10 @@ repslog set add <we_id> --reps 10 --weight 100 --rir 1.0 --effective-reps 5
 repslog set add-cluster <we_id> --reps "10,5,5" --weight 100 --rir "0,0,1" --effective-reps "6,4,3" --rest 15
 ```
 
-#### Cardio / Running
-Includes explicit support for Samsung Health style metrics and structured lap/split tracking.
+#### Cardio / Running (recommended structured path)
+Always log runs with `set add-cardio` — do not store distance, pace, HR, or laps only in workout `--notes`. Includes explicit support for Samsung Health style metrics and structured lap/split tracking.
 ```bash
-# Detailed run tracking with HR zones and laps/splits
+# Recommended: structured run tracking with HR zones and laps/splits
 repslog set add-cardio <we_id> \
   --distance 7.98 \
   --duration 2701 \

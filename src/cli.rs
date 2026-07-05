@@ -25,6 +25,10 @@ pub enum Commands {
         action: ExerciseAction,
     },
     /// Workout management
+    #[command(
+        after_help = "Full workflow and modality examples: see docs/workouts.md and docs/logging.md\n\
+                      Cardio best practices: always use structured set add-cardio for queryable stats and rich views."
+    )]
     Workout {
         #[command(subcommand)]
         action: WorkoutAction,
@@ -100,13 +104,43 @@ pub enum ExerciseAction {
 
 #[derive(Subcommand)]
 pub enum WorkoutAction {
-    /// Create a new workout
+    /// Create a new workout (training session container).
+    ///
+    /// This is step 1 of logging any session. You must follow up with:
+    ///   1. `repslog workout-exercise add <ID> "Exercise Name"`  (or use `set quick`)
+    ///   2. `repslog set add`, `set add-cardio`, or `set add-cluster` to log data
+    ///
+    /// For **Running / Cardio** (strongly recommended):
+    ///   - Use `--type Run` (or "Running")
+    ///   - Add exercise "Running"
+    ///   - Use `set add-cardio` with structured --distance, --duration, --avg-heart-rate,
+    ///     --max-heart-rate, --pace, --calories, --hr-zones JSON, --laps JSON
+    ///   - Do NOT store distance/pace/HR/laps/zones only in --notes (data becomes unqueryable)
+    ///
+    /// Conventional `--type` suggestions (free-form; not enforced):
+    ///   Calisthenics, Run, Push, Pull, Legs, Upper, Full Body, Static Holds, Yoga, Cardio
+    ///   Avoid long descriptions or sentences in --type — put those in --notes instead.
+    ///
+    /// Date format: YYYY-MM-DD or YYYY-MM-DD HH:MM:SS (validated at runtime)
+    ///
+    /// After logging sets, run:
+    ///   `repslog workout update <ID> --duration <minutes> --feeling <1-5>`
+    ///
+    /// See also: docs/workouts.md, docs/logging.md, and `repslog set add-cardio --help`
     Create {
-        #[arg(short, long = "type")]
+        #[arg(
+            short,
+            long = "type",
+            help = "Workout type (e.g. Calisthenics, Run, Push, Legs). Free-form suggestions only."
+        )]
         workout_type: Option<String>,
-        #[arg(short, long)]
+        #[arg(
+            short,
+            long,
+            help = "Optional session notes (avoid putting structured metrics here for cardio)"
+        )]
         notes: Option<String>,
-        #[arg(short, long)]
+        #[arg(short, long, help = "Date in YYYY-MM-DD or YYYY-MM-DD HH:MM:SS format")]
         date: String,
         /// Show what would be created (no changes)
         #[arg(long)]

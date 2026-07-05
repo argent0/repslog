@@ -2,6 +2,8 @@
 
 Logging sets is the core of `repslog`. The tool supports traditional strength training, rest-pause clusters, and detailed cardio metrics.
 
+> **Workflow prerequisite:** All set commands require a prior `workout create` and `workout-exercise add` (or use the `set quick` convenience command). See [workouts.md](workouts.md) for the full multi-step flow and data-entry best practices.
+
 ## Basic Strength Set
 
 To log a standard set, use the `set add` command with a Workout-Exercise ID (`WE_ID`).
