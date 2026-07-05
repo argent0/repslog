@@ -1,14 +1,38 @@
 use crate::cli::ExerciseAction;
 use crate::error::Result;
 use crate::repository::Repository;
-use crate::utils::{format_dry_run_id, print_id, print_json, print_table};
+use crate::utils::{format_datetime_opt, format_dry_run_id, print_id, print_json, print_table};
 
 pub async fn handle_exercise(action: ExerciseAction, repo: &Repository, json: bool) -> Result<()> {
     match action {
         ExerciseAction::List { search, category } => {
             let exercises = repo.list_exercises(search, category).await?;
             if json {
-                print_json(&exercises)?;
+                #[derive(serde::Serialize)]
+                struct ExerciseOut {
+                    id: i64,
+                    name: String,
+                    category: String,
+                    muscle_groups: Option<String>,
+                    equipment: Option<String>,
+                    description: Option<String>,
+                    is_custom: i32,
+                    created_at: Option<String>,
+                }
+                let outs: Vec<ExerciseOut> = exercises
+                    .into_iter()
+                    .map(|ex| ExerciseOut {
+                        id: ex.id,
+                        name: ex.name,
+                        category: ex.category,
+                        muscle_groups: ex.muscle_groups,
+                        equipment: ex.equipment,
+                        description: ex.description,
+                        is_custom: ex.is_custom,
+                        created_at: format_datetime_opt(&ex.created_at),
+                    })
+                    .collect();
+                print_json(&outs)?;
             } else {
                 let mut rows = Vec::new();
                 for ex in exercises {
@@ -53,7 +77,23 @@ pub async fn handle_exercise(action: ExerciseAction, repo: &Repository, json: bo
         ExerciseAction::Search { term } => {
             let exercises = repo.list_exercises(Some(term), None).await?;
             if json {
-                print_json(&exercises)?;
+                #[derive(serde::Serialize)]
+                struct ExerciseOut {
+                    id: i64,
+                    name: String,
+                    category: String,
+                    created_at: Option<String>,
+                }
+                let outs: Vec<ExerciseOut> = exercises
+                    .into_iter()
+                    .map(|ex| ExerciseOut {
+                        id: ex.id,
+                        name: ex.name,
+                        category: ex.category,
+                        created_at: format_datetime_opt(&ex.created_at),
+                    })
+                    .collect();
+                print_json(&outs)?;
             } else {
                 let mut rows = Vec::new();
                 for ex in exercises {

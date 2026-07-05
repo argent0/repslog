@@ -121,7 +121,7 @@ pub enum WorkoutAction {
     ///   Calisthenics, Run, Push, Pull, Legs, Upper, Full Body, Static Holds, Yoga, Cardio
     ///   Avoid long descriptions or sentences in --type — put those in --notes instead.
     ///
-    /// Date format: YYYY-MM-DD or YYYY-MM-DD HH:MM:SS (validated at runtime)
+    /// Date format: YYYY-MM-DD HH:MM:SS (validated at runtime)
     ///
     /// After logging sets, run:
     ///   `repslog workout update <ID> --duration <minutes> --feeling <1-5>`
@@ -140,7 +140,7 @@ pub enum WorkoutAction {
             help = "Optional session notes (avoid putting structured metrics here for cardio)"
         )]
         notes: Option<String>,
-        #[arg(short, long, help = "Date in YYYY-MM-DD or YYYY-MM-DD HH:MM:SS format")]
+        #[arg(short, long, help = "Date/time in YYYY-MM-DD HH:MM:SS format")]
         date: String,
         /// Show what would be created (no changes)
         #[arg(long)]

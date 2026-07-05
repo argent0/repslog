@@ -45,7 +45,7 @@ $REPSLOG exercise add "Bulgarian Split Squat" \
 
 # 3. Workouts
 echo "Testing: repslog workout create"
-WORKOUT_ID=$($REPSLOG workout create --type "Legs" --date "2026-04-23" --notes "Focus on form")
+WORKOUT_ID=$($REPSLOG workout create --type "Legs" --date "2026-04-23 10:00:00" --notes "Focus on form")
 echo "Created workout ID: $WORKOUT_ID"
 
 echo "Testing: repslog workout list"
@@ -158,11 +158,11 @@ $REPSLOG migrate --status --json > /dev/null
 
 # 6. Scripting / Piping
 echo "Testing: piping workout create to workout-exercise add using xargs"
-NEW_WORKOUT_ID=$($REPSLOG workout create --date "2026-04-24" --type "Push")
+NEW_WORKOUT_ID=$($REPSLOG workout create --date "2026-04-24 10:00:00" --type "Push")
 echo "$NEW_WORKOUT_ID" | xargs -I {} $REPSLOG workout-exercise add {} "Pushups" > /dev/null
 
 echo "Testing: workout create --json (for jq scripting)"
-JSON_CREATED=$($REPSLOG workout create --date "2026-04-25" --type "Pull" --json)
+JSON_CREATED=$($REPSLOG workout create --date "2026-04-25 10:00:00" --type "Pull" --json)
 python3 -c '
 import json, sys
 obj = json.loads(sys.argv[1])

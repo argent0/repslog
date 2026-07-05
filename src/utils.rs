@@ -1,8 +1,38 @@
+use crate::error::RepslogError;
 use crate::models::HeartRateZones;
 use colored::*;
 use comfy_table::Table;
 use serde::Serialize;
 use std::io::{self, Read};
+
+pub const DATETIME_FMT: &str = "%Y-%m-%d %H:%M:%S";
+
+/// Parse and validate a datetime string in `YYYY-MM-DD HH:MM:SS` format.
+pub fn parse_datetime(s: &str) -> Result<String, RepslogError> {
+    chrono::NaiveDateTime::parse_from_str(s, DATETIME_FMT)
+        .map(|dt| dt.format(DATETIME_FMT).to_string())
+        .map_err(|_| {
+            RepslogError::Cli(
+                "Invalid datetime format. Use YYYY-MM-DD HH:MM:SS (e.g. 2026-04-23 14:30:00)"
+                    .to_string(),
+            )
+        })
+}
+
+/// Format a stored datetime for display, normalizing legacy date-only values.
+pub fn format_datetime(s: &str) -> String {
+    if let Ok(dt) = chrono::NaiveDateTime::parse_from_str(s, DATETIME_FMT) {
+        return dt.format(DATETIME_FMT).to_string();
+    }
+    if let Ok(d) = chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d") {
+        return format!("{} 00:00:00", d.format("%Y-%m-%d"));
+    }
+    s.to_string()
+}
+
+pub fn format_datetime_opt(s: &Option<String>) -> Option<String> {
+    s.as_ref().map(|v| format_datetime(v))
+}
 
 pub fn read_stdin() -> Option<String> {
     if !atty::is(atty::Stream::Stdin) {
@@ -141,5 +171,27 @@ mod tests {
         let headers = vec!["ID", "Name"];
         let rows = vec![vec!["1".to_string(), "Test".to_string()]];
         print_table(headers, rows);
+    }
+
+    #[test]
+    fn test_parse_datetime_valid() {
+        assert_eq!(
+            parse_datetime("2026-04-23 14:30:00").unwrap(),
+            "2026-04-23 14:30:00"
+        );
+    }
+
+    #[test]
+    fn test_parse_datetime_rejects_date_only() {
+        assert!(parse_datetime("2026-04-23").is_err());
+    }
+
+    #[test]
+    fn test_format_datetime_normalizes_date_only() {
+        assert_eq!(format_datetime("2026-04-23"), "2026-04-23 00:00:00");
+        assert_eq!(
+            format_datetime("2026-04-23 14:30:00"),
+            "2026-04-23 14:30:00"
+        );
     }
 }

@@ -4,10 +4,10 @@ Workouts (also referred to as sessions) are containers for the exercises you per
 
 ## Creating a Workout
 
-To start a new workout, use the `workout create` command. Provide a short `--type`, a `--date`, and optional `--notes`.
+To start a new workout, use the `workout create` command. Provide a short `--type`, a `--date` in `YYYY-MM-DD HH:MM:SS` format, and optional `--notes`.
 
 ```bash
-repslog workout create --type "Legs" --date "2026-04-23" --notes "Focus on form"
+repslog workout create --type "Legs" --date "2026-04-23 10:00:00" --notes "Focus on form"
 ```
 
 The command returns the **workout ID**, which you use to add exercises and log sets.
@@ -28,7 +28,7 @@ Run `repslog workout create --help` for modality-specific guidance inline.
 ### Strength / Calisthenics
 
 ```bash
-ID=$(repslog workout create --type "Calisthenics" --date "2026-07-05")
+ID=$(repslog workout create --type "Calisthenics" --date "2026-07-05 10:00:00")
 WE=$(repslog workout-exercise add "$ID" "Pull Ups")
 repslog set add "$WE" --reps 8 --rir 1.0 --effective-reps 5
 # or clusters
@@ -41,7 +41,7 @@ repslog workout update "$ID" --duration 40 --feeling 4
 > **Important:** For runs, always use `set add-cardio` with structured fields. Storing distance, pace, HR zones, or lap splits only in `--notes` disables automatic summaries, lap tables, HR zone bars, and stats aggregation.
 
 ```bash
-ID=$(repslog workout create --type "Run" --date "2026-07-05" --notes "brief summary")
+ID=$(repslog workout create --type "Run" --date "2026-07-05 10:00:00" --notes "brief summary")
 WE=$(repslog workout-exercise add "$ID" "Running")
 repslog set add-cardio "$WE" \
   --distance 7.14 \
@@ -114,7 +114,7 @@ Or use `set add-unilateral` for symmetric pairs. See [logging.md](logging.md) fo
 
 When scripting or prompting an LLM to log a run:
 
-1. `repslog workout create --type Run --date YYYY-MM-DD [--notes "brief summary"]`
+1. `repslog workout create --type Run --date YYYY-MM-DD HH:MM:SS [--notes "brief summary"]`
 2. `repslog workout-exercise add <ID> Running`
 3. `repslog set add-cardio <WE_ID> --distance ... --duration ... --avg-heart-rate ... --max-heart-rate ... --pace ... --calories ... --hr-zones '...' --laps '[...]'`
 4. `repslog workout update <ID> --duration <minutes> --feeling <1-5>`

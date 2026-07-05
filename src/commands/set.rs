@@ -3,7 +3,8 @@ use crate::error::{RepslogError, Result};
 use crate::models::Lap;
 use crate::repository::Repository;
 use crate::utils::{
-    format_dry_run_id, format_duration, format_pace, parse_id, print_id, print_json, print_table,
+    format_datetime_opt, format_dry_run_id, format_duration, format_pace, parse_id, print_id,
+    print_json, print_table,
     read_stdin,
 };
 use sqlx::types::Json;
@@ -280,7 +281,59 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
         } => {
             let sets = repo.list_sets(workout_exercise_id).await?;
             if json {
-                print_json(&sets)?;
+                #[derive(serde::Serialize)]
+                struct SetOut {
+                    id: i64,
+                    workout_exercise_id: i64,
+                    set_number: i32,
+                    reps: Option<i32>,
+                    weight_kg: Option<f64>,
+                    distance_km: Option<f64>,
+                    duration_seconds: Option<i32>,
+                    rpe: Option<f64>,
+                    rir: Option<f64>,
+                    effective_reps: Option<i32>,
+                    cluster_id: Option<i64>,
+                    rest_seconds: Option<i32>,
+                    notes: Option<String>,
+                    side: Option<String>,
+                    extra_metrics: Option<String>,
+                    avg_heart_rate_bpm: Option<f64>,
+                    max_heart_rate_bpm: Option<f64>,
+                    heart_rate_zones: Option<sqlx::types::Json<crate::models::HeartRateZones>>,
+                    avg_pace_min_per_km: Option<f64>,
+                    calories_burned: Option<i32>,
+                    laps: Option<sqlx::types::Json<Vec<crate::models::Lap>>>,
+                    created_at: Option<String>,
+                }
+                let outs: Vec<SetOut> = sets
+                    .iter()
+                    .map(|s| SetOut {
+                        id: s.id,
+                        workout_exercise_id: s.workout_exercise_id,
+                        set_number: s.set_number,
+                        reps: s.reps,
+                        weight_kg: s.weight_kg,
+                        distance_km: s.distance_km,
+                        duration_seconds: s.duration_seconds,
+                        rpe: s.rpe,
+                        rir: s.rir,
+                        effective_reps: s.effective_reps,
+                        cluster_id: s.cluster_id,
+                        rest_seconds: s.rest_seconds,
+                        notes: s.notes.clone(),
+                        side: s.side.clone(),
+                        extra_metrics: s.extra_metrics.clone(),
+                        avg_heart_rate_bpm: s.avg_heart_rate_bpm,
+                        max_heart_rate_bpm: s.max_heart_rate_bpm,
+                        heart_rate_zones: s.heart_rate_zones.clone(),
+                        avg_pace_min_per_km: s.avg_pace_min_per_km,
+                        calories_burned: s.calories_burned,
+                        laps: s.laps.clone(),
+                        created_at: format_datetime_opt(&s.created_at),
+                    })
+                    .collect();
+                print_json(&outs)?;
             } else {
                 let mut rows = Vec::new();
                 for s in sets.iter() {

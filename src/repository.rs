@@ -1,4 +1,5 @@
 use crate::error::Result;
+use crate::utils::parse_datetime;
 use crate::models::{Exercise, ExerciseSet, HeartRateZones, Lap, Workout, WorkoutExercise};
 use sqlx::sqlite::SqlitePool;
 use sqlx::types::Json;
@@ -87,10 +88,11 @@ impl Repository {
         if dry_run {
             return self.get_next_id("workouts").await;
         }
-        let res = sqlx::query("INSERT INTO workouts (workout_type, notes, started_at) VALUES (?, ?, COALESCE(?, CURRENT_TIMESTAMP))")
+        let started_at = started_at.map(parse_datetime).transpose()?;
+        let res = sqlx::query("INSERT INTO workouts (workout_type, notes, started_at) VALUES (?, ?, COALESCE(?, strftime('%Y-%m-%d %H:%M:%S', 'now')))")
             .bind(workout_type)
             .bind(notes)
-            .bind(started_at)
+            .bind(started_at.as_deref())
             .execute(&self.pool)
             .await?;
         Ok(res.last_insert_rowid())
@@ -131,12 +133,13 @@ impl Repository {
         if dry_run {
             return Ok(());
         }
+        let started_at = started_at.map(parse_datetime).transpose()?;
         sqlx::query("UPDATE workouts SET workout_type = COALESCE(?, workout_type), notes = COALESCE(?, notes), duration_minutes = COALESCE(?, duration_minutes), overall_feeling = COALESCE(?, overall_feeling), started_at = COALESCE(?, started_at) WHERE id = ?")
             .bind(workout_type)
             .bind(notes)
             .bind(duration)
             .bind(feeling)
-            .bind(started_at)
+            .bind(started_at.as_deref())
             .bind(id)
             .execute(&self.pool)
             .await?;

@@ -3,8 +3,8 @@ use crate::error::Result;
 use crate::models::HeartRateZones;
 use crate::repository::Repository;
 use crate::utils::{
-    format_dry_run_id, format_duration, format_hr_zones_bar, format_pace, parse_id, print_id,
-    print_json, print_table,
+    format_datetime, format_datetime_opt, format_dry_run_id, format_duration, format_hr_zones_bar,
+    format_pace, parse_datetime, parse_id, print_id, print_json, print_table,
 };
 use colored::*;
 
@@ -16,14 +16,7 @@ pub async fn handle_workout(action: WorkoutAction, repo: &Repository, json: bool
             date,
             dry_run,
         } => {
-            // Try to parse to ensure it's a valid date (YYYY-MM-DD)
-            if chrono::NaiveDate::parse_from_str(&date, "%Y-%m-%d").is_err()
-                && chrono::NaiveDateTime::parse_from_str(&date, "%Y-%m-%d %H:%M:%S").is_err()
-            {
-                return Err(crate::error::RepslogError::Cli(
-                    "Invalid date format. Use YYYY-MM-DD or 'YYYY-MM-DD HH:MM:SS'".to_string(),
-                ));
-            }
+            let date = parse_datetime(&date)?;
             let id = repo
                 .create_workout(
                     workout_type.as_deref(),
@@ -43,14 +36,36 @@ pub async fn handle_workout(action: WorkoutAction, repo: &Repository, json: bool
         WorkoutAction::List { limit, days } => {
             let workouts = repo.list_workouts(limit, days).await?;
             if json {
-                print_json(&workouts)?;
+                #[derive(serde::Serialize)]
+                struct WorkoutOut {
+                    id: i64,
+                    started_at: String,
+                    workout_type: Option<String>,
+                    notes: Option<String>,
+                    overall_feeling: Option<i32>,
+                    duration_minutes: Option<i32>,
+                    created_at: Option<String>,
+                }
+                let outs: Vec<WorkoutOut> = workouts
+                    .iter()
+                    .map(|w| WorkoutOut {
+                        id: w.id,
+                        started_at: format_datetime(&w.started_at),
+                        workout_type: w.workout_type.clone(),
+                        notes: w.notes.clone(),
+                        overall_feeling: w.overall_feeling,
+                        duration_minutes: w.duration_minutes,
+                        created_at: format_datetime_opt(&w.created_at),
+                    })
+                    .collect();
+                print_json(&outs)?;
             } else {
                 let mut rows = Vec::new();
                 for w in workouts {
                     let summary = get_workout_summary(repo, &w).await?;
                     rows.push(vec![
                         w.id.to_string().cyan().to_string(),
-                        w.started_at.dimmed().to_string(),
+                        format_datetime(&w.started_at).dimmed().to_string(),
                         w.workout_type
                             .clone()
                             .unwrap_or_default()
@@ -87,23 +102,36 @@ pub async fn handle_workout(action: WorkoutAction, repo: &Repository, json: bool
                     let mut ex_list = Vec::new();
                     for (we, name) in &exercises {
                         let sets = repo.list_sets(we.id).await?;
+                        let sets_json: Vec<serde_json::Value> = sets
+                            .iter()
+                            .map(|s| {
+                                let mut v = serde_json::to_value(s).expect("set serializes");
+                                if let Some(obj) = v.as_object_mut() {
+                                    obj.insert(
+                                        "created_at".to_string(),
+                                        serde_json::json!(format_datetime_opt(&s.created_at)),
+                                    );
+                                }
+                                v
+                            })
+                            .collect();
                         ex_list.push(serde_json::json!({
                             "id": we.id,
                             "exercise_name": name,
                             "order": we.order,
                             "notes": we.notes,
-                            "sets": sets
+                            "sets": sets_json
                         }));
                     }
 
                     let mut data = serde_json::json!({
                         "id": w.id,
-                        "started_at": w.started_at,
+                        "started_at": format_datetime(&w.started_at),
                         "workout_type": w.workout_type,
                         "notes": w.notes,
                         "overall_feeling": w.overall_feeling,
                         "duration_minutes": w.duration_minutes,
-                        "created_at": w.created_at,
+                        "created_at": format_datetime_opt(&w.created_at),
                         "exercises": ex_list,
                     });
 
@@ -175,7 +203,7 @@ pub async fn handle_workout(action: WorkoutAction, repo: &Repository, json: bool
                         "Type: {}",
                         w.workout_type.as_deref().unwrap_or("General").green()
                     );
-                    println!("Started: {}", w.started_at.dimmed());
+                    println!("Started: {}", format_datetime(&w.started_at).dimmed());
                     if let Some(ref notes) = w.notes {
                         if !notes.is_empty() {
                             println!("Notes: {}", notes);
@@ -429,15 +457,7 @@ pub async fn handle_workout(action: WorkoutAction, repo: &Repository, json: bool
             dry_run,
         } => {
             let id = parse_id(&workout_id, dry_run)?;
-            if let Some(ref d) = date {
-                if chrono::NaiveDate::parse_from_str(d, "%Y-%m-%d").is_err()
-                    && chrono::NaiveDateTime::parse_from_str(d, "%Y-%m-%d %H:%M:%S").is_err()
-                {
-                    return Err(crate::error::RepslogError::Cli(
-                        "Invalid date format. Use YYYY-MM-DD or 'YYYY-MM-DD HH:MM:SS'".to_string(),
-                    ));
-                }
-            }
+            let date = date.as_deref().map(parse_datetime).transpose()?;
             repo.update_workout(
                 id,
                 workout_type.as_deref(),

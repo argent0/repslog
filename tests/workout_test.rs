@@ -19,7 +19,7 @@ async fn test_update_workout() {
         Some("Feeling good"),
         Some(45),
         Some(4),
-        Some("2023-01-01"),
+        Some("2023-01-01 00:00:00"),
         false,
     )
     .await
@@ -30,7 +30,7 @@ async fn test_update_workout() {
     assert_eq!(workout.notes, Some("Feeling good".to_string()));
     assert_eq!(workout.duration_minutes, Some(45));
     assert_eq!(workout.overall_feeling, Some(4));
-    assert_eq!(workout.started_at, "2023-01-01");
+    assert_eq!(workout.started_at, "2023-01-01 00:00:00");
 }
 
 #[tokio::test]

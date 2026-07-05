@@ -64,6 +64,7 @@ async fn test_set_numbering() {
         None,
         None,
         None,
+        None,
         false,
     )
     .await

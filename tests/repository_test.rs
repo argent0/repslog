@@ -83,11 +83,7 @@ async fn test_workout_flow() {
             None,
             None,
             None,
-            None,
-            None,
-            None,
             None, // side
-            None,
             None,
             None,
             None,
@@ -112,11 +108,7 @@ async fn test_workout_flow() {
             None,
             None,
             None,
-            None,
-            None,
-            None,
             None, // side
-            None,
             None,
             None,
             None,

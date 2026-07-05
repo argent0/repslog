@@ -43,8 +43,8 @@ repslog exercise add "Bulgarian Split Squat" --category strength --equipment dum
 ### 3. Workouts (Sessions)
 Workouts are the top-level containers for your training. `workout create` is step 1 only — you must add exercises and log sets afterward. See `docs/workouts.md` (Data Entry Best Practices) and `docs/logging.md` for the full workflow.
 ```bash
-# Create a new workout (date is mandatory: YYYY-MM-DD)
-repslog workout create --type "Legs" --date "2026-04-23" --notes "Focus on form"
+# Create a new workout (date/time is mandatory: YYYY-MM-DD HH:MM:SS)
+repslog workout create --type "Legs" --date "2026-04-23 10:00:00" --notes "Focus on form"
 
 # List recent workouts (now includes automated cardio summaries!)
 repslog workout list --days 7
@@ -129,7 +129,7 @@ repslog stats summary --days 30
 You can pipe IDs from one command to another for faster logging:
 ```bash
 # Example: Create workout and immediately add an exercise using the piped ID
-repslog workout create --date "2026-04-23" | repslog workout-exercise add "Running"
+repslog workout create --date "2026-04-23 10:00:00" | repslog workout-exercise add "Running"
 ```
 
 ### 8. Database Migrations

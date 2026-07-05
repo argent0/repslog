@@ -1,7 +1,7 @@
 use crate::cli::StatsAction;
 use crate::error::Result;
 use crate::repository::Repository;
-use crate::utils::{print_json, print_table};
+use crate::utils::{format_datetime, print_json, print_table};
 use serde::Serialize;
 use sqlx::Row;
 
@@ -158,7 +158,7 @@ pub async fn handle_stats(action: StatsAction, repo: &Repository, json: bool) ->
             let mut loads = Vec::new();
             for r in res {
                 loads.push(Load {
-                    date: r.get("started_at"),
+                    date: format_datetime(r.get::<String, _>("started_at").as_str()),
                     set: r.get("set_number"),
                     weight_kg: r.get("weight_kg"),
                     reps: r.get("reps"),

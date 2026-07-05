@@ -40,7 +40,7 @@ Use the global `--db` flag to specify a custom database file path. This is usefu
 
 ```bash
 repslog --db /tmp/test-workouts.db init
-repslog --db ./my-training.db workout create --date 2026-01-01 --type "Test"
+repslog --db ./my-training.db workout create --date "2026-01-01 10:00:00" --type "Test"
 repslog --db /tmp/test-workouts.db exercise list
 ```
 
