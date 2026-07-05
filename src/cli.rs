@@ -83,8 +83,19 @@ pub enum ExerciseAction {
         #[arg(short, long)]
         category: Option<String>,
     },
-    /// Add a new exercise
+    /// Add a custom exercise to the catalog.
+    ///
+    /// Names must be lowercase and singular (e.g. `pull up`, not `Pull Ups` or `pull ups`).
+    /// Search the catalog first to avoid near-duplicates that fragment history and stats.
+    ///
+    /// Examples:
+    ///
+    ///   repslog exercise search "pull"
+    ///
+    ///   repslog exercise add "bulgarian split squat" --category strength --equipment dumbbell
     Add {
+        /// Exercise name (lowercase, singular; use spaces between words)
+        #[arg(help = "Exercise name (lowercase, singular, e.g. pull up)")]
         name: String,
         #[arg(short, long)]
         category: String,

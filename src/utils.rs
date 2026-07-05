@@ -161,6 +161,184 @@ pub fn print_id(id: &str, json: bool) {
     }
 }
 
+/// Normalize a custom exercise name for storage: trim and collapse whitespace.
+/// Rejects names containing uppercase letters (Title Case, CamelCase, etc.).
+pub fn normalize_exercise_name(name: &str) -> Result<String, RepslogError> {
+    let trimmed = name.trim();
+    if trimmed.is_empty() {
+        return Err(RepslogError::Cli("Exercise name cannot be empty".to_string()));
+    }
+    if trimmed.chars().any(|c| c.is_uppercase()) {
+        return Err(RepslogError::Cli(format!(
+            "Exercise names must be lowercase. Use: {}",
+            trimmed.to_lowercase()
+        )));
+    }
+    Ok(trimmed
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" "))
+}
+
+/// If `name` contains likely plural words, return a singular suggestion.
+pub fn suggest_singular_exercise_name(name: &str) -> Option<String> {
+    let mut changed = false;
+    let words: Vec<String> = name
+        .split_whitespace()
+        .map(|word| {
+            if is_likely_plural_word(word) {
+                changed = true;
+                singularize_word(word)
+            } else {
+                word.to_string()
+            }
+        })
+        .collect();
+    changed.then(|| words.join(" "))
+}
+
+fn is_likely_plural_word(word: &str) -> bool {
+    let alnum: String = word.chars().filter(|c| c.is_alphanumeric()).collect();
+    alnum.len() >= 3 && alnum.ends_with('s') && !alnum.ends_with("ss")
+}
+
+fn singularize_word(word: &str) -> String {
+    word.strip_suffix('s')
+        .map(str::to_string)
+        .unwrap_or_else(|| word.to_string())
+}
+
+/// Alphanumeric lowercase key for near-duplicate detection (strips trailing plural "s").
+pub fn exercise_similarity_key(name: &str) -> String {
+    let raw: String = name
+        .to_lowercase()
+        .chars()
+        .filter(|c| c.is_alphanumeric())
+        .collect();
+    raw.strip_suffix('s')
+        .filter(|s| s.len() >= 3)
+        .unwrap_or(&raw)
+        .to_string()
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ExerciseNameConflictKind {
+    Duplicate,
+    Similar,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExerciseNameConflict {
+    pub existing_id: i64,
+    pub existing_name: String,
+    pub kind: ExerciseNameConflictKind,
+}
+
+/// Find catalog entries that duplicate or closely resemble `new_name`.
+pub fn find_exercise_name_conflicts(
+    new_name: &str,
+    existing: &[(i64, String)],
+) -> Vec<ExerciseNameConflict> {
+    let new_key = exercise_similarity_key(new_name);
+    if new_key.is_empty() {
+        return Vec::new();
+    }
+
+    let mut conflicts = Vec::new();
+    for &(id, ref existing_name) in existing {
+        let existing_key = exercise_similarity_key(existing_name);
+        if existing_key.is_empty() {
+            continue;
+        }
+        if new_key == existing_key {
+            conflicts.push(ExerciseNameConflict {
+                existing_id: id,
+                existing_name: existing_name.clone(),
+                kind: ExerciseNameConflictKind::Duplicate,
+            });
+            continue;
+        }
+        if exercise_names_similar(new_name, existing_name, &new_key, &existing_key) {
+            conflicts.push(ExerciseNameConflict {
+                existing_id: id,
+                existing_name: existing_name.clone(),
+                kind: ExerciseNameConflictKind::Similar,
+            });
+        }
+    }
+    conflicts
+}
+
+fn exercise_names_similar(
+    a_name: &str,
+    b_name: &str,
+    a_key: &str,
+    b_key: &str,
+) -> bool {
+    if a_key == b_key {
+        return false;
+    }
+    let (shorter, longer) = if a_key.len() <= b_key.len() {
+        (a_key, b_key)
+    } else {
+        (b_key, a_key)
+    };
+    if shorter.len() >= 5 && longer.contains(shorter) {
+        return true;
+    }
+    if a_key.len() >= 5 && b_key.len() >= 5 && levenshtein_distance(a_key, b_key) <= 1 {
+        return true;
+    }
+    exercise_name_tokens_overlap(a_name, b_name)
+}
+
+fn exercise_name_tokens(name: &str) -> Vec<String> {
+    name.to_lowercase()
+        .split_whitespace()
+        .map(|word| {
+            let alnum: String = word.chars().filter(|c| c.is_alphanumeric()).collect();
+            alnum
+                .strip_suffix('s')
+                .filter(|s| s.len() >= 3)
+                .unwrap_or(&alnum)
+                .to_string()
+        })
+        .filter(|token| !token.is_empty())
+        .collect()
+}
+
+fn exercise_name_tokens_overlap(a_name: &str, b_name: &str) -> bool {
+    use std::collections::HashSet;
+
+    let a_tokens: HashSet<_> = exercise_name_tokens(a_name).into_iter().collect();
+    let b_tokens: HashSet<_> = exercise_name_tokens(b_name).into_iter().collect();
+    if a_tokens.is_empty() || b_tokens.is_empty() {
+        return false;
+    }
+    let shared = a_tokens.intersection(&b_tokens).count();
+    let min_len = a_tokens.len().min(b_tokens.len());
+    shared >= 2 && shared * 100 >= min_len * 80
+}
+
+fn levenshtein_distance(a: &str, b: &str) -> usize {
+    let a_chars: Vec<char> = a.chars().collect();
+    let b_chars: Vec<char> = b.chars().collect();
+    let mut prev: Vec<usize> = (0..=b_chars.len()).collect();
+    let mut curr = vec![0; b_chars.len() + 1];
+
+    for (i, a_ch) in a_chars.iter().enumerate() {
+        curr[0] = i + 1;
+        for (j, b_ch) in b_chars.iter().enumerate() {
+            let cost = usize::from(a_ch != b_ch);
+            curr[j + 1] = (prev[j + 1] + 1)
+                .min(curr[j] + 1)
+                .min(prev[j] + cost);
+        }
+        std::mem::swap(&mut prev, &mut curr);
+    }
+    prev[b_chars.len()]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -193,5 +371,60 @@ mod tests {
             format_datetime("2026-04-23 14:30:00"),
             "2026-04-23 14:30:00"
         );
+    }
+
+    #[test]
+    fn test_normalize_exercise_name_lowercase() {
+        assert_eq!(
+            normalize_exercise_name("bulgarian split squat").unwrap(),
+            "bulgarian split squat"
+        );
+        assert_eq!(
+            normalize_exercise_name("  pull   up  ").unwrap(),
+            "pull up"
+        );
+    }
+
+    #[test]
+    fn test_suggest_singular_exercise_name() {
+        assert_eq!(
+            suggest_singular_exercise_name("pull ups"),
+            Some("pull up".to_string())
+        );
+        assert_eq!(
+            suggest_singular_exercise_name("bulgarian split squat"),
+            None
+        );
+        assert_eq!(suggest_singular_exercise_name("bench press"), None);
+    }
+
+    #[test]
+    fn test_normalize_exercise_name_rejects_uppercase() {
+        assert!(normalize_exercise_name("Pull Ups").is_err());
+        assert!(normalize_exercise_name("pullUps").is_err());
+        assert!(normalize_exercise_name("").is_err());
+    }
+
+    #[test]
+    fn test_exercise_similarity_key_plural_and_spacing() {
+        assert_eq!(exercise_similarity_key("pull ups"), "pullup");
+        assert_eq!(exercise_similarity_key("Pullups"), "pullup");
+        assert_eq!(exercise_similarity_key("pull up"), "pullup");
+    }
+
+    #[test]
+    fn test_find_exercise_name_conflicts_duplicate() {
+        let existing = vec![(1, "Pullups".to_string())];
+        let conflicts = find_exercise_name_conflicts("pull ups", &existing);
+        assert_eq!(conflicts.len(), 1);
+        assert_eq!(conflicts[0].kind, ExerciseNameConflictKind::Duplicate);
+    }
+
+    #[test]
+    fn test_find_exercise_name_conflicts_similar() {
+        let existing = vec![(2, "Nordic Hamstring Curl".to_string())];
+        let conflicts = find_exercise_name_conflicts("nordic curl", &existing);
+        assert_eq!(conflicts.len(), 1);
+        assert_eq!(conflicts[0].kind, ExerciseNameConflictKind::Similar);
     }
 }

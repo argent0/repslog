@@ -1,7 +1,10 @@
 use crate::cli::ExerciseAction;
-use crate::error::Result;
+use crate::error::{RepslogError, Result};
 use crate::repository::Repository;
-use crate::utils::{format_datetime_opt, format_dry_run_id, print_id, print_json, print_table};
+use crate::utils::{
+    find_exercise_name_conflicts, format_datetime_opt, format_dry_run_id, normalize_exercise_name,
+    print_id, print_json, print_table, suggest_singular_exercise_name, ExerciseNameConflictKind,
+};
 
 pub async fn handle_exercise(action: ExerciseAction, repo: &Repository, json: bool) -> Result<()> {
     match action {
@@ -55,6 +58,38 @@ pub async fn handle_exercise(action: ExerciseAction, repo: &Repository, json: bo
             description,
             dry_run,
         } => {
+            let name = normalize_exercise_name(&name)?;
+            if let Some(singular) = suggest_singular_exercise_name(&name) {
+                eprintln!(
+                    "Warning: Prefer singular exercise names (e.g. '{}' instead of '{}').",
+                    singular, name
+                );
+            }
+            let existing = repo.list_exercises(None, None).await?;
+            let catalog: Vec<(i64, String)> = existing
+                .iter()
+                .map(|ex| (ex.id, ex.name.clone()))
+                .collect();
+            let conflicts = find_exercise_name_conflicts(&name, &catalog);
+            for conflict in &conflicts {
+                match conflict.kind {
+                    ExerciseNameConflictKind::Duplicate => {
+                        return Err(RepslogError::Cli(format!(
+                            "Exercise already exists as '{}' (id: {}). \
+                             Use `repslog exercise search` to find existing entries.",
+                            conflict.existing_name, conflict.existing_id
+                        )));
+                    }
+                    ExerciseNameConflictKind::Similar => {
+                        eprintln!(
+                            "Warning: '{}' is similar to existing '{}' (id: {}). \
+                             Prefer the existing entry to avoid fragmenting history.",
+                            name, conflict.existing_name, conflict.existing_id
+                        );
+                    }
+                }
+            }
+
             let id = repo
                 .add_exercise(
                     &name,
