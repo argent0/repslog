@@ -134,6 +134,13 @@ pub enum WorkoutAction {
     ///
     /// Date format: YYYY-MM-DD HH:MM:SS (validated at runtime)
     ///
+    /// For **Unilateral** (left/right work):
+    ///   - Tag each set with `--side left` or `--side right` on `set add` or `set add-unilateral`
+    ///
+    /// For **Static Holds / Timed Work**:
+    ///   - Use `--type Static Holds`
+    ///   - Use `set add --duration <seconds>` instead of --reps
+    ///
     /// After logging sets, run:
     ///   `repslog workout update <ID> --duration <minutes> --feeling <1-5>`
     ///
@@ -194,12 +201,17 @@ pub enum WorkoutAction {
 
 #[derive(Subcommand)]
 pub enum WorkoutExerciseAction {
-    /// Add an exercise to a workout
+    /// Add an exercise to a workout.
+    ///
+    /// Example: repslog workout-exercise add 1 "Pull Ups" --goal-reps 50
     Add {
         workout_id: String,
         exercise_id_or_name: String,
         #[arg(short, long)]
         order: Option<i32>,
+        /// Target rep count for this exercise (shown as Goal vs Actual in workout view)
+        #[arg(long = "goal-reps")]
+        goal_reps: Option<i32>,
         /// Show what would be added (no changes)
         #[arg(long)]
         dry_run: bool,
@@ -211,14 +223,25 @@ pub enum WorkoutExerciseAction {
 #[derive(Subcommand)]
 pub enum SetAction {
     /// Add a set to a workout exercise.
-    /// Example: repslog set add 1 --reps 10 --weight 60 --rir 0.0 --effective-reps 5
+    ///
+    /// Strength: `--reps`, `--weight`, `--rir`, `--effective-reps`
+    /// Static holds: `--duration <seconds>` (omit --reps)
+    /// Unilateral: add `--side left|right|both`
+    ///
+    /// Example (strength): repslog set add 1 --reps 10 --weight 60 --rir 0.0 --effective-reps 5
+    /// Example (hold):     repslog set add 1 --duration 60 --notes "Wall sit"
+    /// Example (unilateral): repslog set add 1 --reps 8 --weight 20 --side left
     Add {
         workout_exercise_id: Option<String>,
         #[arg(short, long)]
         reps: Option<i32>,
         #[arg(short, long)]
         weight: Option<f64>,
-        #[arg(short, long)]
+        #[arg(
+            short,
+            long,
+            help = "Hold duration in seconds (for static/timed work; omit --reps)"
+        )]
         duration: Option<i32>,
         #[arg(long)]
         distance: Option<f64>,

@@ -37,7 +37,7 @@ echo "Testing: repslog exercise search --json"
 $REPSLOG exercise search "Squat" --json > /dev/null
 
 echo "Testing: repslog exercise add"
-$REPSLOG exercise add "Bulgarian Split Squat" \
+$REPSLOG exercise add "bulgarian split squat" \
   --category strength \
   --equipment dumbbell \
   --muscles "quads,glutes" \
@@ -69,12 +69,22 @@ echo "Testing: repslog workout-exercise add"
 WE_ID=$($REPSLOG workout-exercise add $WORKOUT_ID "Squat (Barbell)")
 echo "Created Workout-Exercise ID: $WE_ID"
 
+echo "Testing: repslog workout-exercise add --goal-reps"
+GOAL_WE=$($REPSLOG workout-exercise add $WORKOUT_ID "Pullups" --goal-reps 30)
+$REPSLOG set add $GOAL_WE --reps 10 --rir 1.0
+$REPSLOG set add $GOAL_WE --reps 8 --rir 0.5
+
 echo "Testing: repslog workout-exercise list --json"
 $REPSLOG workout-exercise list $WORKOUT_ID --json > /dev/null
 
 # 4. Logging Sets
 echo "Testing: repslog set add"
 $REPSLOG set add $WE_ID --reps 10 --weight 100 --rir 1.0 --effective-reps 5
+
+echo "Testing: repslog set add --duration (static holds)"
+HOLD_WE=$($REPSLOG workout-exercise add $WORKOUT_ID "Plank")
+$REPSLOG set add $HOLD_WE --duration 60 --notes "Wall sit hold"
+$REPSLOG set add $HOLD_WE --duration 45 --notes "Second hold"
 
 echo "Testing: repslog set add-cluster"
 $REPSLOG set add-cluster $WE_ID \
@@ -101,7 +111,7 @@ $REPSLOG set list $WE_ID --json > /dev/null
 
 # Unilateral / side + corrections (new in unilateral improvement)
 echo "Testing: repslog set add with --side (unilateral)"
-SPLIT_WE=$($REPSLOG workout-exercise add $WORKOUT_ID "Bulgarian Split Squat")
+SPLIT_WE=$($REPSLOG workout-exercise add $WORKOUT_ID "bulgarian split squat")
 $REPSLOG set add $SPLIT_WE --reps 8 --weight 20 --side left
 $REPSLOG set add $SPLIT_WE --reps 8 --weight 20 --side right
 

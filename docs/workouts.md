@@ -110,6 +110,18 @@ repslog set add <WE_ID> --reps 8 --weight 20 --side right
 
 Or use `set add-unilateral` for symmetric pairs. See [logging.md](logging.md) for details.
 
+### Exercise Goals
+
+Set a rep target when adding an exercise to a workout. `workout view` shows Goal vs Actual progress:
+
+```bash
+WE=$(repslog workout-exercise add "$ID" "Pull Ups" --goal-reps 50)
+repslog set add "$WE" --reps 8 --rir 1.0
+repslog set add "$WE" --reps 7 --rir 0.5
+```
+
+Use `--goal-reps` instead of describing targets only in notes — structured goals are summed against logged sets (per-side aware when `--side` is used).
+
 ### LLM / Agent Canonical Run Recipe
 
 When scripting or prompting an LLM to log a run:

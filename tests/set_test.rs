@@ -12,7 +12,7 @@ async fn test_set_numbering() {
         .unwrap();
     let w_id = repo.create_workout(None, None, None, false).await.unwrap();
     let we_id = repo
-        .add_workout_exercise(w_id, ex_id, 1, None, false)
+        .add_workout_exercise(w_id, ex_id, 1, None, None, false)
         .await
         .unwrap();
 
@@ -98,7 +98,7 @@ async fn test_set_quick_logic() {
         .unwrap();
     let order = repo.get_max_order_for_workout(w_id).await.unwrap() + 1;
     let we_id = repo
-        .add_workout_exercise(w_id, exercise.id, order, None, false)
+        .add_workout_exercise(w_id, exercise.id, order, None, None, false)
         .await
         .unwrap();
     repo.add_set(
@@ -136,7 +136,7 @@ async fn test_side_and_unilateral_ordering() {
         .await
         .unwrap();
     let we_id = repo
-        .add_workout_exercise(w_id, ex_id, 1, None, false)
+        .add_workout_exercise(w_id, ex_id, 1, None, None, false)
         .await
         .unwrap();
 
@@ -210,7 +210,7 @@ async fn test_set_update_and_weight_only() {
         .unwrap();
     let w_id = repo.create_workout(None, None, None, false).await.unwrap();
     let we_id = repo
-        .add_workout_exercise(w_id, ex_id, 1, None, false)
+        .add_workout_exercise(w_id, ex_id, 1, None, None, false)
         .await
         .unwrap();
 
@@ -275,7 +275,7 @@ async fn test_set_delete_and_reorder() {
         .unwrap();
     let w_id = repo.create_workout(None, None, None, false).await.unwrap();
     let we_id = repo
-        .add_workout_exercise(w_id, ex_id, 1, None, false)
+        .add_workout_exercise(w_id, ex_id, 1, None, None, false)
         .await
         .unwrap();
 

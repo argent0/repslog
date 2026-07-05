@@ -560,6 +560,7 @@ pub async fn handle_workout_exercise(
             workout_id,
             exercise_id_or_name,
             order,
+            goal_reps,
             dry_run,
         } => {
             let w_id = parse_id(&workout_id, dry_run)?;
@@ -573,7 +574,7 @@ pub async fn handle_workout_exercise(
                     repo.get_max_order_for_workout(w_id).await? + 1
                 };
                 let id = repo
-                    .add_workout_exercise(w_id, ex.id, order, None, dry_run)
+                    .add_workout_exercise(w_id, ex.id, order, None, goal_reps, dry_run)
                     .await?;
                 let formatted_id = format_dry_run_id(id, dry_run);
                 if json {
@@ -599,6 +600,7 @@ pub async fn handle_workout_exercise(
                     exercise_id: i64,
                     order: i32,
                     notes: Option<String>,
+                    goal_reps: Option<i32>,
                     exercise_name: String,
                 }
                 let outs: Vec<WeOut> = exercises
@@ -609,6 +611,7 @@ pub async fn handle_workout_exercise(
                         exercise_id: we.exercise_id,
                         order: we.order,
                         notes: we.notes,
+                        goal_reps: we.goal_reps,
                         exercise_name: name,
                     })
                     .collect();

@@ -30,7 +30,7 @@ async fn test_cardio_tracking() {
 
     // 3. Add Exercise to Workout
     let we_id = repo
-        .add_workout_exercise(w_id, ex_id, 1, None, false)
+        .add_workout_exercise(w_id, ex_id, 1, None, None, false)
         .await
         .unwrap();
 

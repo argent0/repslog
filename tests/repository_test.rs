@@ -62,7 +62,7 @@ async fn test_workout_flow() {
 
     // 3. Add Exercise to Workout
     let we_id = repo
-        .add_workout_exercise(w_id, ex_id, 1, Some("Warmup"), false)
+        .add_workout_exercise(w_id, ex_id, 1, Some("Warmup"), None, false)
         .await
         .unwrap();
     assert!(we_id > 0);
@@ -161,7 +161,7 @@ async fn test_new_set_fields() {
         .unwrap();
     let w_id = repo.create_workout(None, None, None, false).await.unwrap();
     let we_id = repo
-        .add_workout_exercise(w_id, ex_id, 1, None, false)
+        .add_workout_exercise(w_id, ex_id, 1, None, None, false)
         .await
         .unwrap();
 

@@ -66,10 +66,8 @@ pub async fn handle_exercise(action: ExerciseAction, repo: &Repository, json: bo
                 );
             }
             let existing = repo.list_exercises(None, None).await?;
-            let catalog: Vec<(i64, String)> = existing
-                .iter()
-                .map(|ex| (ex.id, ex.name.clone()))
-                .collect();
+            let catalog: Vec<(i64, String)> =
+                existing.iter().map(|ex| (ex.id, ex.name.clone())).collect();
             let conflicts = find_exercise_name_conflicts(&name, &catalog);
             for conflict in &conflicts {
                 match conflict.kind {

@@ -16,10 +16,24 @@ repslog set add <WE_ID> --reps 10 --weight 100 --rir 1.0 --effective-reps 5
 ### Parameters
 - `--reps <INT>`: Number of repetitions.
 - `--weight <FLOAT>`: Weight in kg.
+- `--duration <INT>`: Hold duration in seconds (for static/timed work; omit `--reps`).
 - `--rir <FLOAT>`: Reps In Reserve (e.g., 0.0 for failure).
 - `--effective-reps <INT>`: Number of stimulating reps.
 - `--rpe <FLOAT>`: Rate of Perceived Exertion (1-10).
+- `--side <left|right|both>`: Side for unilateral sets (see [Unilateral / Side Tracking](#unilateral--side-tracking)).
 - `--notes <TEXT>`: Optional notes for the set.
+
+## Static Holds / Timed Work
+
+For isometric holds and timed exercises, use `--duration` instead of `--reps`:
+
+```bash
+WE=$(repslog workout-exercise add <WORKOUT_ID> "Wall Sit")
+repslog set add $WE --duration 60 --notes "Wall sit hold"
+repslog set add $WE --duration 45 --notes "Second hold"
+```
+
+Use `--type "Static Holds"` on `workout create` for session-level filtering. `workout view` displays duration-based sets in the Details column.
 
 ## Rest-Pause / Cluster Sets
 

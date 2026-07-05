@@ -166,7 +166,9 @@ pub fn print_id(id: &str, json: bool) {
 pub fn normalize_exercise_name(name: &str) -> Result<String, RepslogError> {
     let trimmed = name.trim();
     if trimmed.is_empty() {
-        return Err(RepslogError::Cli("Exercise name cannot be empty".to_string()));
+        return Err(RepslogError::Cli(
+            "Exercise name cannot be empty".to_string(),
+        ));
     }
     if trimmed.chars().any(|c| c.is_uppercase()) {
         return Err(RepslogError::Cli(format!(
@@ -174,10 +176,7 @@ pub fn normalize_exercise_name(name: &str) -> Result<String, RepslogError> {
             trimmed.to_lowercase()
         )));
     }
-    Ok(trimmed
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" "))
+    Ok(trimmed.split_whitespace().collect::<Vec<_>>().join(" "))
 }
 
 /// If `name` contains likely plural words, return a singular suggestion.
@@ -269,12 +268,7 @@ pub fn find_exercise_name_conflicts(
     conflicts
 }
 
-fn exercise_names_similar(
-    a_name: &str,
-    b_name: &str,
-    a_key: &str,
-    b_key: &str,
-) -> bool {
+fn exercise_names_similar(a_name: &str, b_name: &str, a_key: &str, b_key: &str) -> bool {
     if a_key == b_key {
         return false;
     }
@@ -330,9 +324,7 @@ fn levenshtein_distance(a: &str, b: &str) -> usize {
         curr[0] = i + 1;
         for (j, b_ch) in b_chars.iter().enumerate() {
             let cost = usize::from(a_ch != b_ch);
-            curr[j + 1] = (prev[j + 1] + 1)
-                .min(curr[j] + 1)
-                .min(prev[j] + cost);
+            curr[j + 1] = (prev[j + 1] + 1).min(curr[j] + 1).min(prev[j] + cost);
         }
         std::mem::swap(&mut prev, &mut curr);
     }
@@ -379,10 +371,7 @@ mod tests {
             normalize_exercise_name("bulgarian split squat").unwrap(),
             "bulgarian split squat"
         );
-        assert_eq!(
-            normalize_exercise_name("  pull   up  ").unwrap(),
-            "pull up"
-        );
+        assert_eq!(normalize_exercise_name("  pull   up  ").unwrap(), "pull up");
     }
 
     #[test]

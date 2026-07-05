@@ -1,6 +1,6 @@
 use crate::error::Result;
-use crate::utils::parse_datetime;
 use crate::models::{Exercise, ExerciseSet, HeartRateZones, Lap, Workout, WorkoutExercise};
+use crate::utils::parse_datetime;
 use sqlx::sqlite::SqlitePool;
 use sqlx::types::Json;
 use sqlx::Row;
@@ -164,16 +164,20 @@ impl Repository {
         exercise_id: i64,
         order: i32,
         notes: Option<&str>,
+        goal_reps: Option<i32>,
         dry_run: bool,
     ) -> Result<i64> {
         if dry_run {
             return self.get_next_id("workout_exercises").await;
         }
-        let res = sqlx::query("INSERT INTO workout_exercises (workout_id, exercise_id, \"order\", notes) VALUES (?, ?, ?, ?)")
+        let res = sqlx::query(
+            "INSERT INTO workout_exercises (workout_id, exercise_id, \"order\", notes, goal_reps) VALUES (?, ?, ?, ?, ?)",
+        )
             .bind(workout_id)
             .bind(exercise_id)
             .bind(order)
             .bind(notes)
+            .bind(goal_reps)
             .execute(&self.pool)
             .await?;
         Ok(res.last_insert_rowid())

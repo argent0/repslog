@@ -24,7 +24,7 @@ async fn test_stats_prs() {
         .await
         .unwrap();
     let we_id = repo
-        .add_workout_exercise(w_id, ex_id, 1, None, false)
+        .add_workout_exercise(w_id, ex_id, 1, None, None, false)
         .await
         .unwrap();
 
@@ -109,7 +109,7 @@ async fn test_stats_volume() {
         .await
         .unwrap();
     let we_id = repo
-        .add_workout_exercise(w_id, ex_id, 1, None, false)
+        .add_workout_exercise(w_id, ex_id, 1, None, None, false)
         .await
         .unwrap();
 

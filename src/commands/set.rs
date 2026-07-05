@@ -4,8 +4,7 @@ use crate::models::Lap;
 use crate::repository::Repository;
 use crate::utils::{
     format_datetime_opt, format_dry_run_id, format_duration, format_pace, parse_id, print_id,
-    print_json, print_table,
-    read_stdin,
+    print_json, print_table, read_stdin,
 };
 use sqlx::types::Json;
 
@@ -668,7 +667,7 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                     repo.get_max_order_for_workout(w_id).await? + 1
                 };
                 let we_id = repo
-                    .add_workout_exercise(w_id, ex.id, order, None, dry_run)
+                    .add_workout_exercise(w_id, ex.id, order, None, None, dry_run)
                     .await?;
                 let set_id = repo
                     .add_set(

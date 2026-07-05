@@ -65,13 +65,13 @@ async fn test_workout_exercise_order() {
     let w_id = repo.create_workout(None, None, None, false).await.unwrap();
 
     let order1 = repo.get_max_order_for_workout(w_id).await.unwrap() + 1;
-    repo.add_workout_exercise(w_id, ex1, order1, None, false)
+    repo.add_workout_exercise(w_id, ex1, order1, None, None, false)
         .await
         .unwrap();
     assert_eq!(order1, 1);
 
     let order2 = repo.get_max_order_for_workout(w_id).await.unwrap() + 1;
-    repo.add_workout_exercise(w_id, ex2, order2, None, false)
+    repo.add_workout_exercise(w_id, ex2, order2, None, None, false)
         .await
         .unwrap();
     assert_eq!(order2, 2);
