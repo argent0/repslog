@@ -453,4 +453,12 @@ pub enum StatsAction {
         #[arg(short, long)]
         exercise: String,
     },
+    /// Per-set history for an exercise across workouts in a date range.
+    /// Lists every logged set (not totals) for workouts that include the exercise.
+    History {
+        #[arg(short, long)]
+        exercise: String,
+        #[arg(short, long, default_value_t = 30)]
+        days: i64,
+    },
 }

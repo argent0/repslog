@@ -144,6 +144,12 @@ $REPSLOG workout view $WORKOUT_ID > /dev/null
 echo "Testing: repslog stats weight (progression)"
 $REPSLOG stats weight --exercise "Squat (Barbell)" > /dev/null
 
+echo "Testing: repslog stats history"
+$REPSLOG stats history --exercise "Squat (Barbell)" --days 30 > /dev/null
+
+echo "Testing: repslog stats history --json"
+$REPSLOG stats history --exercise "Squat (Barbell)" --days 30 --json > /dev/null
+
 # 5. Stats
 echo "Testing: repslog stats prs"
 $REPSLOG stats prs --exercise "Squat (Barbell)" > /dev/null

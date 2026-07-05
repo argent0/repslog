@@ -170,3 +170,146 @@ async fn test_stats_volume() {
     assert_eq!(res.get::<String, _>("name"), "Curl");
     assert_eq!(res.get::<f64, _>("total_volume"), 220.0);
 }
+
+#[tokio::test]
+async fn test_stats_history_lists_each_set_in_date_range() {
+    let pool = setup_test_db().await.unwrap();
+    let repo = Repository::new(pool);
+
+    let ex_id = repo
+        .add_exercise(
+            "push up",
+            "calisthenics",
+            None,
+            None,
+            None,
+            false,
+            false,
+        )
+        .await
+        .unwrap();
+
+    let recent_w = repo
+        .create_workout(
+            Some("Calisthenics"),
+            None,
+            Some("2026-07-01 10:00:00"),
+            false,
+        )
+        .await
+        .unwrap();
+    let recent_we = repo
+        .add_workout_exercise(recent_w, ex_id, 1, None, None, false)
+        .await
+        .unwrap();
+
+    repo.add_set(
+        recent_we,
+        1,
+        Some(10),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        false,
+    )
+    .await
+    .unwrap();
+    repo.add_set(
+        recent_we,
+        2,
+        Some(8),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        false,
+    )
+    .await
+    .unwrap();
+
+    let old_w = repo
+        .create_workout(
+            Some("Calisthenics"),
+            None,
+            Some("2025-01-01 10:00:00"),
+            false,
+        )
+        .await
+        .unwrap();
+    let old_we = repo
+        .add_workout_exercise(old_w, ex_id, 1, None, None, false)
+        .await
+        .unwrap();
+    repo.add_set(
+        old_we,
+        1,
+        Some(20),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        false,
+    )
+    .await
+    .unwrap();
+
+    let query = "SELECT w.id AS workout_id, es.set_number, es.reps \
+                  FROM exercise_sets es \
+                  JOIN workout_exercises we ON es.workout_exercise_id = we.id \
+                  JOIN exercises e ON we.exercise_id = e.id \
+                  JOIN workouts w ON we.workout_id = w.id \
+                  WHERE e.name LIKE ? AND w.started_at >= date('now', ?) \
+                  ORDER BY w.started_at ASC, es.set_number ASC";
+    let like = "%push up%";
+    let days_ago = "-30 days";
+    let res = sqlx::query(query)
+        .bind(like)
+        .bind(days_ago)
+        .fetch_all(&repo.pool)
+        .await
+        .unwrap();
+
+    assert_eq!(res.len(), 2);
+    assert_eq!(res[0].get::<i64, _>("workout_id"), recent_w);
+    assert_eq!(res[0].get::<i32, _>("set_number"), 1);
+    assert_eq!(res[0].get::<i32, _>("reps"), 10);
+    assert_eq!(res[1].get::<i32, _>("set_number"), 2);
+    assert_eq!(res[1].get::<i32, _>("reps"), 8);
+}

@@ -123,6 +123,9 @@ repslog stats volume --period 90d
 
 # Training Summary
 repslog stats summary --days 30
+
+# Per-set history for an exercise across workouts (last 30 days)
+repslog stats history --exercise "push up" --days 30
 ```
 
 ### 7. Scripting & Stdin

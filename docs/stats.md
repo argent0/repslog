@@ -49,3 +49,17 @@ repslog stats weight --exercise "Bulgarian Split Squat"
 ```
 
 Output is ordered by date and includes the set number, weight, reps, and any notes for that set.
+
+## Set History (per workout)
+
+List every logged set for an exercise across workouts in a date range — useful for seeing push-up (or any exercise) performance session by session without aggregating totals:
+
+```bash
+# All push-up sets from workouts in the last 30 days (default)
+repslog stats history --exercise "push up"
+
+# Last 7 days, JSON for scripting
+repslog stats history --exercise "pike push up" --days 7 --json
+```
+
+Each row is one set with the workout date, workout ID, set number, reps (or duration for holds), weight, side, and notes. Only workouts that actually include the exercise appear. Exercise names are matched with a substring search (same as `stats weight`).

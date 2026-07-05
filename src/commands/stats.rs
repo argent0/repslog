@@ -136,6 +136,90 @@ pub async fn handle_stats(action: StatsAction, repo: &Repository, json: bool) ->
                 }
             }
         }
+        StatsAction::History { exercise, days } => {
+            let query = "SELECT w.id AS workout_id, w.started_at, w.workout_type, e.name AS exercise_name, \
+                         es.set_number, es.reps, es.weight_kg, es.duration_seconds, es.side, es.rir, \
+                         es.effective_reps, es.notes \
+                         FROM exercise_sets es \
+                         JOIN workout_exercises we ON es.workout_exercise_id = we.id \
+                         JOIN exercises e ON we.exercise_id = e.id \
+                         JOIN workouts w ON we.workout_id = w.id \
+                         WHERE e.name LIKE ? AND w.started_at >= date('now', ?) \
+                         ORDER BY w.started_at ASC, es.set_number ASC";
+            let like = format!("%{}%", exercise);
+            let days_ago = format!("-{} days", days);
+            let res = sqlx::query(query)
+                .bind(&like)
+                .bind(&days_ago)
+                .fetch_all(&repo.pool)
+                .await?;
+            #[derive(Serialize)]
+            struct HistoryEntry {
+                workout_id: i64,
+                date: String,
+                workout_type: Option<String>,
+                exercise: String,
+                set_number: i32,
+                reps: Option<i32>,
+                weight_kg: Option<f64>,
+                duration_seconds: Option<i32>,
+                side: Option<String>,
+                rir: Option<f64>,
+                effective_reps: Option<i32>,
+                notes: Option<String>,
+            }
+            let mut entries = Vec::new();
+            for r in res {
+                entries.push(HistoryEntry {
+                    workout_id: r.get("workout_id"),
+                    date: format_datetime(r.get::<String, _>("started_at").as_str()),
+                    workout_type: r.get("workout_type"),
+                    exercise: r.get("exercise_name"),
+                    set_number: r.get("set_number"),
+                    reps: r.get("reps"),
+                    weight_kg: r.get("weight_kg"),
+                    duration_seconds: r.get("duration_seconds"),
+                    side: r.get("side"),
+                    rir: r.get("rir"),
+                    effective_reps: r.get("effective_reps"),
+                    notes: r.get("notes"),
+                });
+            }
+            if json {
+                print_json(&entries)?;
+            } else {
+                println!(
+                    "Set history for exercises matching '{}' (last {} days):",
+                    exercise, days
+                );
+                if entries.is_empty() {
+                    println!("No sets found in this period.");
+                } else {
+                    let mut rows = Vec::new();
+                    for e in &entries {
+                        rows.push(vec![
+                            e.date.clone(),
+                            e.workout_id.to_string(),
+                            e.set_number.to_string(),
+                            e.reps.map(|r| r.to_string()).unwrap_or_else(|| {
+                                e.duration_seconds
+                                    .map(|d| format!("{}s", d))
+                                    .unwrap_or_default()
+                            }),
+                            e.weight_kg
+                                .map(|w| format!("{:.2} kg", w))
+                                .unwrap_or_default(),
+                            e.side.clone().unwrap_or_default(),
+                            e.notes.clone().unwrap_or_default(),
+                        ]);
+                    }
+                    print_table(
+                        vec!["Date", "Workout", "Set", "Reps", "Weight", "Side", "Notes"],
+                        rows,
+                    );
+                }
+            }
+        }
         StatsAction::Weight { exercise } => {
             // Basic weight progression: join to get workout date + sets with weight for the exercise
             let query = "SELECT w.started_at, es.set_number, es.weight_kg, es.reps, es.notes \
