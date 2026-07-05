@@ -329,7 +329,7 @@ pub async fn handle_workout(action: WorkoutAction, repo: &Repository, json: bool
 
                     println!("\n{}", "EXERCISES".bold().yellow());
                     for (we, name) in exercises {
-                        println!("\n{} (WE ID: {})", name.bold(), we.id.to_string().dimmed());
+                        println!("{} (WE ID: {})", name.bold(), we.id.to_string().dimmed());
                         if let Some(ref notes) = we.notes {
                             println!("Notes: {}", notes);
                         }

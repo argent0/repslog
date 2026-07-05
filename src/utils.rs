@@ -5,6 +5,9 @@ use comfy_table::Table;
 use serde::Serialize;
 use std::io::{self, Read};
 
+/// Header underline only — no outer borders, column dividers, or row separators.
+const HEADER_ONLY_PRESET: &str = "    ──              ";
+
 pub const DATETIME_FMT: &str = "%Y-%m-%d %H:%M:%S";
 
 /// Parse and validate a datetime string in `YYYY-MM-DD HH:MM:SS` format.
@@ -48,12 +51,20 @@ pub fn read_stdin() -> Option<String> {
 }
 
 pub fn print_table(headers: Vec<&str>, rows: Vec<Vec<String>>) {
+    if rows.is_empty() {
+        return;
+    }
+
     let mut table = Table::new();
+    table.load_preset(HEADER_ONLY_PRESET);
     table.set_header(headers);
     for row in rows {
         table.add_row(row);
     }
-    println!("{}", table);
+    for column in table.column_iter_mut() {
+        column.set_padding((0, 1));
+    }
+    println!("{}", table.trim_fmt());
 }
 
 pub fn format_duration(seconds: u32) -> String {
