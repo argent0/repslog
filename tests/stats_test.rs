@@ -36,6 +36,7 @@ async fn test_stats_prs() {
         Some(100.0),
         None,
         None,
+        None,
         Some(9.0),
         None,
         None,
@@ -59,6 +60,7 @@ async fn test_stats_prs() {
         2,
         Some(15),
         Some(80.0),
+        None,
         None,
         None,
         Some(8.0),
@@ -126,6 +128,7 @@ async fn test_stats_volume() {
         None,
         None,
         None,
+        None,
         None, // side
         None,
         None,
@@ -144,6 +147,7 @@ async fn test_stats_volume() {
         2,
         Some(12),
         Some(10.0),
+        None,
         None,
         None,
         None,
@@ -177,15 +181,7 @@ async fn test_stats_history_lists_each_set_in_date_range() {
     let repo = Repository::new(pool);
 
     let ex_id = repo
-        .add_exercise(
-            "push up",
-            "calisthenics",
-            None,
-            None,
-            None,
-            false,
-            false,
-        )
+        .add_exercise("push up", "calisthenics", None, None, None, false, false)
         .await
         .unwrap();
 
@@ -207,6 +203,7 @@ async fn test_stats_history_lists_each_set_in_date_range() {
         recent_we,
         1,
         Some(10),
+        None,
         None,
         None,
         None,
@@ -247,6 +244,7 @@ async fn test_stats_history_lists_each_set_in_date_range() {
         None,
         None,
         None,
+        None,
         false,
     )
     .await
@@ -269,6 +267,7 @@ async fn test_stats_history_lists_each_set_in_date_range() {
         old_we,
         1,
         Some(20),
+        None,
         None,
         None,
         None,

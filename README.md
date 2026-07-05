@@ -99,8 +99,8 @@ repslog set add-cardio <we_id> \
 
 #### Convenience Commands
 ```bash
-# Quick: Add exercise and first set in one command
-repslog set quick 1 "Pushups"
+# Quick: add exercise (log sets with body weight required for calisthenics)
+repslog set quick 1 "pull up" --reps 8 --weight 82
 ```
 
 **New: Beautiful Cardio Display**

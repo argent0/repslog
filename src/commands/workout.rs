@@ -87,7 +87,7 @@ pub async fn handle_workout(action: WorkoutAction, repo: &Repository, json: bool
                     let exercises = repo.list_workout_exercises(workout_id).await?;
                     // Collect cardio for summary (dupe of below logic for json path)
                     let mut cardio_sets: Vec<(String, crate::models::ExerciseSet)> = Vec::new();
-                    for (we, name) in &exercises {
+                    for (we, name, _equipment) in &exercises {
                         let sets = repo.list_sets(we.id).await?;
                         for s in sets {
                             if s.distance_km.is_some()
@@ -100,7 +100,7 @@ pub async fn handle_workout(action: WorkoutAction, repo: &Repository, json: bool
                     }
 
                     let mut ex_list = Vec::new();
-                    for (we, name) in &exercises {
+                    for (we, name, _equipment) in &exercises {
                         let sets = repo.list_sets(we.id).await?;
                         let sets_json: Vec<serde_json::Value> = sets
                             .iter()
@@ -214,7 +214,7 @@ pub async fn handle_workout(action: WorkoutAction, repo: &Repository, json: bool
 
                     // Collect all cardio data for a high-level summary
                     let mut cardio_sets = Vec::new();
-                    for (we, name) in &exercises {
+                    for (we, name, _equipment) in &exercises {
                         let sets = repo.list_sets(we.id).await?;
                         for s in sets {
                             if s.distance_km.is_some()
@@ -328,7 +328,7 @@ pub async fn handle_workout(action: WorkoutAction, repo: &Repository, json: bool
                     }
 
                     println!("\n{}", "EXERCISES".bold().yellow());
-                    for (we, name) in exercises {
+                    for (we, name, equipment) in exercises {
                         println!("{} (WE ID: {})", name.bold(), we.id.to_string().dimmed());
                         if let Some(ref notes) = we.notes {
                             println!("Notes: {}", notes);
@@ -362,8 +362,13 @@ pub async fn handle_workout(action: WorkoutAction, repo: &Repository, json: bool
                             if let Some(reps) = s.reps {
                                 details.push(format!("{} reps", reps));
                             }
-                            if let Some(weight) = s.weight_kg {
-                                details.push(format!("{:.2} kg", weight));
+                            let load = crate::bodyweight::format_load_display(
+                                equipment.as_deref(),
+                                s.weight_kg,
+                                s.external_load_kg,
+                            );
+                            if !load.is_empty() {
+                                details.push(load);
                             }
                             if let Some(dist) = s.distance_km {
                                 details.push(format!("{:.2} km", dist));
@@ -500,7 +505,7 @@ async fn get_workout_summary(
     let mut hr_samples = Vec::new();
     let mut cardio_found = false;
 
-    for (we, _) in &exercises {
+    for (we, _, _) in &exercises {
         let sets = repo.list_sets(we.id).await?;
         for s in sets {
             if let Some(dist) = s.distance_km {
@@ -605,7 +610,7 @@ pub async fn handle_workout_exercise(
                 }
                 let outs: Vec<WeOut> = exercises
                     .into_iter()
-                    .map(|(we, name)| WeOut {
+                    .map(|(we, name, _equipment)| WeOut {
                         id: we.id,
                         workout_id: we.workout_id,
                         exercise_id: we.exercise_id,
@@ -618,7 +623,7 @@ pub async fn handle_workout_exercise(
                 print_json(&outs)?;
             } else {
                 let mut rows = Vec::new();
-                for (we, name) in exercises {
+                for (we, name, _equipment) in exercises {
                     rows.push(vec![
                         we.id.to_string(),
                         name,

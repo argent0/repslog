@@ -24,6 +24,8 @@ repslog stats volume --period 30d
 repslog stats volume --exercise "Bench Press" --period 1y
 ```
 
+Volume is computed as `reps × load`. For barbell exercises, load is `--weight`. For bodyweight exercises, load is `--weight` (body mass) plus `--external-load` (vest/belt; negative for assistance). Sets logged with `--no-weight-recorded` contribute **zero** volume.
+
 ## Training Summary
 
 Get a high-level overview of your training frequency and variety:
@@ -40,15 +42,16 @@ The summary includes:
 - Total distance covered (for cardio).
 - Average session feeling and duration.
 
-## Weight Progression
+## Load Progression
 
-See the load history for a specific exercise over time (great for tracking progressive overload on bilateral or unilateral lifts):
+See the load history for a specific exercise over time (great for tracking progressive overload):
 
 ```bash
-repslog stats weight --exercise "Bulgarian Split Squat"
+repslog stats weight --exercise "bulgarian split squat"
+repslog stats weight --exercise "pull up"
 ```
 
-Output is ordered by date and includes the set number, weight, reps, and any notes for that set.
+Output is ordered by date and includes the set number, load, reps, and any notes. For bodyweight exercises, load shows body mass and external load (e.g. `82.0 kg BW +5.0 kg`). Sets without recorded body weight are omitted.
 
 ## Set History (per workout)
 

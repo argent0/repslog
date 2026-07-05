@@ -67,6 +67,7 @@ async fn test_cardio_tracking() {
             1,
             None,
             None,
+            None,
             duration,
             distance,
             None,

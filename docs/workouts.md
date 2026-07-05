@@ -29,12 +29,16 @@ Run `repslog workout create --help` for modality-specific guidance inline.
 
 ```bash
 ID=$(repslog workout create --type "Calisthenics" --date "2026-07-05 10:00:00")
-WE=$(repslog workout-exercise add "$ID" "Pull Ups")
-repslog set add "$WE" --reps 8 --rir 1.0 --effective-reps 5
-# or clusters
-repslog set add-cluster "$WE" --reps "3,3,2" --rir "0,0,1" --rest 15
+WE=$(repslog workout-exercise add "$ID" "pull up")
+repslog set add "$WE" --reps 8 --weight 82 --rir 1.0 --effective-reps 5
+# weighted vest on later sets
+repslog set add "$WE" --reps 5 --weight 82 --external-load 10
+# or clusters (body weight required on clusters too)
+repslog set add-cluster "$WE" --reps "3,3,2" --weight 82 --rir "0,0,1" --rest 15
 repslog workout update "$ID" --duration 40 --feeling 4
 ```
+
+> **Bodyweight rule:** `--weight` is your body mass in kg on every calisthenics set. Use `--external-load` for vests/belts (negative for band assistance). Do not omit weight — `stats volume` ignores sets without it.
 
 ### Running / Cardio (recommended structured path)
 
@@ -62,8 +66,8 @@ repslog workout update "$ID" --duration 43 --feeling 4
 Use `set add --duration <seconds>` (not reps):
 
 ```bash
-WE=$(repslog workout-exercise add "$ID" "Wall Sit")
-repslog set add "$WE" --duration 60 --notes "Wall sit hold"
+WE=$(repslog workout-exercise add "$ID" "wall sit")
+repslog set add "$WE" --duration 60 --weight 82 --notes "Wall sit hold"
 ```
 
 ## Data Entry Best Practices
@@ -104,8 +108,8 @@ Near-duplicate names (e.g. "Pull Up", "Pull Ups", "Pullups") fragment history an
 For left/right work (Bulgarian split squats, pistols, single-leg bridges), tag each set:
 
 ```bash
-repslog set add <WE_ID> --reps 8 --weight 20 --side left
-repslog set add <WE_ID> --reps 8 --weight 20 --side right
+repslog set add <WE_ID> --reps 8 --weight 82 --side left
+repslog set add <WE_ID> --reps 8 --weight 82 --side right
 ```
 
 Or use `set add-unilateral` for symmetric pairs. See [logging.md](logging.md) for details.
@@ -115,9 +119,9 @@ Or use `set add-unilateral` for symmetric pairs. See [logging.md](logging.md) fo
 Set a rep target when adding an exercise to a workout. `workout view` shows Goal vs Actual progress:
 
 ```bash
-WE=$(repslog workout-exercise add "$ID" "Pull Ups" --goal-reps 50)
-repslog set add "$WE" --reps 8 --rir 1.0
-repslog set add "$WE" --reps 7 --rir 0.5
+WE=$(repslog workout-exercise add "$ID" "pull up" --goal-reps 50)
+repslog set add "$WE" --reps 8 --weight 82 --rir 1.0
+repslog set add "$WE" --reps 7 --weight 82 --rir 0.5
 ```
 
 Use `--goal-reps` instead of describing targets only in notes — structured goals are summed against logged sets (per-side aware when `--side` is used).

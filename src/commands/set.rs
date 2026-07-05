@@ -1,3 +1,4 @@
+use crate::bodyweight;
 use crate::cli::SetAction;
 use crate::error::{RepslogError, Result};
 use crate::models::Lap;
@@ -14,6 +15,8 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
             workout_exercise_id,
             reps,
             weight,
+            external_load,
+            no_weight_recorded,
             duration,
             distance,
             rpe,
@@ -47,13 +50,27 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                 && duration.is_none()
                 && distance.is_none()
                 && avg_heart_rate.is_none()
+                && external_load.is_none()
             {
-                return Err(RepslogError::Cli("At least one metric (reps, weight, duration, distance, or heart rate) must be provided.".into()));
+                return Err(RepslogError::Cli("At least one metric (reps, weight, duration, distance, external load, or heart rate) must be provided.".into()));
             }
 
             if let Some(ref laps_wrapper) = laps {
                 validate_laps(&laps_wrapper.0, distance, duration.map(|d| d as u32))?;
             }
+
+            let (resolved_weight, resolved_external_load) = resolve_load_for_workout_exercise(
+                repo,
+                id,
+                &id_str,
+                dry_run,
+                weight,
+                external_load,
+                no_weight_recorded,
+                reps,
+                duration,
+            )
+            .await?;
 
             let set_number = if dry_run && id_str.starts_with("DRY-RUN-") {
                 1 // If it's a dry-run workout exercise, start with set 1
@@ -66,7 +83,8 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                     id,
                     set_number,
                     reps,
-                    weight,
+                    resolved_weight,
+                    resolved_external_load,
                     duration,
                     distance,
                     rpe,
@@ -137,6 +155,7 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                     set_number,
                     None, // reps
                     None, // weight
+                    None, // external_load
                     Some(duration),
                     Some(distance),
                     None, // rpe
@@ -169,6 +188,8 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
         SetAction::AddCluster {
             workout_exercise_id,
             weight,
+            external_load,
+            no_weight_recorded,
             reps,
             rir,
             effective_reps,
@@ -219,6 +240,19 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                 ));
             }
 
+            let (resolved_weight, resolved_external_load) = resolve_load_for_workout_exercise(
+                repo,
+                id,
+                &id_str,
+                dry_run,
+                weight,
+                external_load,
+                no_weight_recorded,
+                Some(1),
+                None,
+            )
+            .await?;
+
             let cluster_id = repo.get_next_cluster_id().await?;
             let mut set_ids = Vec::new();
 
@@ -240,7 +274,8 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                         id,
                         set_number,
                         Some(r),
-                        weight,
+                        resolved_weight,
+                        resolved_external_load,
                         None,
                         None,
                         None,
@@ -287,6 +322,7 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                     set_number: i32,
                     reps: Option<i32>,
                     weight_kg: Option<f64>,
+                    external_load_kg: Option<f64>,
                     distance_km: Option<f64>,
                     duration_seconds: Option<i32>,
                     rpe: Option<f64>,
@@ -313,6 +349,7 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                         set_number: s.set_number,
                         reps: s.reps,
                         weight_kg: s.weight_kg,
+                        external_load_kg: s.external_load_kg,
                         distance_km: s.distance_km,
                         duration_seconds: s.duration_seconds,
                         rpe: s.rpe,
@@ -334,6 +371,10 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                     .collect();
                 print_json(&outs)?;
             } else {
+                let equipment = repo
+                    .get_exercise_for_workout_exercise(workout_exercise_id)
+                    .await?
+                    .and_then(|e| e.equipment);
                 let mut rows = Vec::new();
                 for s in sets.iter() {
                     let cluster_label = if let Some(cid) = s.cluster_id {
@@ -370,9 +411,11 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                         format!("{}{}", s.set_number, cluster_label),
                         side_label,
                         s.reps.map(|r| r.to_string()).unwrap_or_default(),
-                        s.weight_kg
-                            .map(|w| format!("{:.2} kg", w))
-                            .unwrap_or_default(),
+                        bodyweight::format_load_display(
+                            equipment.as_deref(),
+                            s.weight_kg,
+                            s.external_load_kg,
+                        ),
                         s.distance_km
                             .map(|d| format!("{:.2} km", d))
                             .unwrap_or_default(),
@@ -421,6 +464,8 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
             set_id,
             reps,
             weight,
+            external_load,
+            no_weight_recorded,
             duration,
             distance,
             rpe,
@@ -434,14 +479,26 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
             let id = parse_id(&set_id, dry_run)?;
             // Verify exists for better error (and for dry-run to still validate)
             let existing = repo.get_set(id).await?;
-            if existing.is_none() {
-                return Err(RepslogError::Cli(format!("Set {} not found", set_id)));
-            }
+            let existing =
+                existing.ok_or_else(|| RepslogError::Cli(format!("Set {} not found", set_id)))?;
+            let (resolved_weight, resolved_external_load, clear_weight) =
+                resolve_load_for_set_update(
+                    repo,
+                    &existing,
+                    weight,
+                    external_load,
+                    no_weight_recorded,
+                    reps,
+                    duration,
+                )
+                .await?;
             let side_norm = side.as_deref().map(|s| s.to_lowercase());
             repo.update_set(
                 id,
                 reps,
-                weight,
+                resolved_weight,
+                clear_weight,
+                resolved_external_load,
                 duration,
                 distance,
                 rpe,
@@ -521,6 +578,8 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
             workout_exercise_id,
             reps,
             weight,
+            external_load,
+            no_weight_recorded,
             rir,
             effective_reps,
             rest_seconds,
@@ -597,6 +656,19 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                 }
             };
 
+            let (resolved_weight, resolved_external_load) = resolve_load_for_workout_exercise(
+                repo,
+                id,
+                &id_str,
+                dry_run,
+                weight,
+                external_load,
+                no_weight_recorded,
+                Some(1),
+                None,
+            )
+            .await?;
+
             let mut created = Vec::new();
             for &sd in &sides {
                 for (i, &r) in reps_list.iter().enumerate() {
@@ -615,7 +687,8 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                             id,
                             set_number,
                             Some(r),
-                            weight,
+                            resolved_weight,
+                            resolved_external_load,
                             None,
                             None,
                             None,
@@ -654,6 +727,12 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
         SetAction::Quick {
             workout_id,
             exercise_name_or_id,
+            reps,
+            weight,
+            external_load,
+            no_weight_recorded,
+            duration,
+            notes,
             dry_run,
         } => {
             let w_id = parse_id(&workout_id, dry_run)?;
@@ -669,21 +748,68 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                 let we_id = repo
                     .add_workout_exercise(w_id, ex.id, order, None, None, dry_run)
                     .await?;
-                let set_id = repo
-                    .add_set(
-                        we_id, 1, None, None, None, None, None, None, None, None, None, None,
-                        None, // side
-                        None, None, None, None, None, None, dry_run,
-                    )
-                    .await?;
-                let formatted_set_id = format_dry_run_id(set_id, dry_run);
-                if json {
-                    print_id(&formatted_set_id, true);
+                let logging_set =
+                    bodyweight::is_strength_metric_set(reps, weight, duration, external_load);
+                if logging_set {
+                    let _id_str = format_dry_run_id(we_id, dry_run);
+                    let (resolved_weight, resolved_external_load) =
+                        if dry_run && workout_id.starts_with("DRY-RUN-") {
+                            (weight, external_load)
+                        } else {
+                            bodyweight::resolve_bodyweight_load(
+                                &ex,
+                                weight,
+                                external_load,
+                                no_weight_recorded,
+                                bodyweight::is_bodyweight(&ex),
+                            )?
+                        };
+                    let set_id = repo
+                        .add_set(
+                            we_id,
+                            1,
+                            reps,
+                            resolved_weight,
+                            resolved_external_load,
+                            duration,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            notes.as_deref(),
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            dry_run,
+                        )
+                        .await?;
+                    let formatted_set_id = format_dry_run_id(set_id, dry_run);
+                    if json {
+                        print_id(&formatted_set_id, true);
+                    } else {
+                        println!(
+                            "Added exercise {} to workout {} and created first set with ID {}",
+                            ex.name, workout_id, formatted_set_id
+                        );
+                    }
+                } else if json {
+                    print_id(&format_dry_run_id(we_id, dry_run), true);
                 } else {
                     println!(
-                        "Added exercise {} to workout {} and created first set with ID {}",
-                        ex.name, workout_id, formatted_set_id
+                        "Added exercise {} to workout {} (WE ID {}). Log sets with repslog set add.",
+                        ex.name, workout_id, format_dry_run_id(we_id, dry_run)
                     );
+                    if bodyweight::is_bodyweight(&ex) {
+                        eprintln!(
+                            "Tip: bodyweight exercises require --weight <body-mass-kg> on each set."
+                        );
+                    }
                 }
             } else {
                 println!("Exercise not found: {}", exercise_name_or_id);
@@ -691,6 +817,123 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
         }
     }
     Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn resolve_load_for_workout_exercise(
+    repo: &Repository,
+    workout_exercise_id: i64,
+    id_str: &str,
+    dry_run: bool,
+    weight: Option<f64>,
+    external_load: Option<f64>,
+    no_weight_recorded: bool,
+    reps: Option<i32>,
+    duration: Option<i32>,
+) -> Result<(Option<f64>, Option<f64>)> {
+    if dry_run && id_str.starts_with("DRY-RUN-") {
+        return Ok((weight, external_load));
+    }
+    let exercise = repo
+        .get_exercise_for_workout_exercise(workout_exercise_id)
+        .await?
+        .ok_or_else(|| {
+            RepslogError::Cli(format!(
+                "Workout-exercise {} not found",
+                workout_exercise_id
+            ))
+        })?;
+    let requires_body_weight =
+        bodyweight::is_strength_metric_set(reps, weight, duration, external_load)
+            && bodyweight::is_bodyweight(&exercise);
+    bodyweight::resolve_bodyweight_load(
+        &exercise,
+        weight,
+        external_load,
+        no_weight_recorded,
+        requires_body_weight,
+    )
+}
+
+async fn resolve_load_for_set_update(
+    repo: &Repository,
+    existing: &crate::models::ExerciseSet,
+    weight: Option<f64>,
+    external_load: Option<f64>,
+    no_weight_recorded: bool,
+    reps: Option<i32>,
+    duration: Option<i32>,
+) -> Result<(Option<f64>, Option<f64>, bool)> {
+    let exercise = repo
+        .get_exercise_for_workout_exercise(existing.workout_exercise_id)
+        .await?
+        .ok_or_else(|| {
+            RepslogError::Cli(format!(
+                "Workout-exercise {} not found",
+                existing.workout_exercise_id
+            ))
+        })?;
+
+    if !bodyweight::is_bodyweight(&exercise) {
+        bodyweight::validate_external_load_for_equipment(&exercise, external_load)?;
+        if no_weight_recorded {
+            return Err(RepslogError::Cli(
+                "--no-weight-recorded is only valid for bodyweight exercises.".into(),
+            ));
+        }
+        return Ok((weight, external_load, false));
+    }
+
+    let final_reps = reps.or(existing.reps);
+    let final_duration = duration.or(existing.duration_seconds);
+    let touches_strength = reps.is_some()
+        || duration.is_some()
+        || weight.is_some()
+        || external_load.is_some()
+        || no_weight_recorded
+        || final_reps.is_some()
+        || final_duration.is_some()
+        || existing.weight_kg.is_some()
+        || existing.external_load_kg.is_some();
+
+    if !touches_strength {
+        return Ok((weight, external_load, false));
+    }
+
+    bodyweight::validate_external_load_for_equipment(&exercise, external_load)?;
+
+    if no_weight_recorded {
+        if weight.is_some() {
+            return Err(RepslogError::Cli(
+                "Cannot use --weight together with --no-weight-recorded.".into(),
+            ));
+        }
+        eprintln!("{}", bodyweight::NO_WEIGHT_WARNING);
+        return Ok((None, external_load, true));
+    }
+
+    if let Some(w) = weight {
+        if w <= 0.0 {
+            return Err(RepslogError::Cli(
+                "Body weight must be a positive value in kg.".into(),
+            ));
+        }
+        return Ok((Some(w), external_load, false));
+    }
+
+    if existing.weight_kg.is_some() {
+        return Ok((None, external_load, false));
+    }
+
+    if final_reps.is_some() || final_duration.is_some() {
+        return Err(RepslogError::Cli(format!(
+            "Bodyweight exercise '{}' requires --weight <kg> (your body mass) \
+             or --no-weight-recorded (not recommended).",
+            exercise.name
+        )));
+    }
+
+    Ok((None, external_load, false))
 }
 
 #[allow(clippy::explicit_counter_loop)]

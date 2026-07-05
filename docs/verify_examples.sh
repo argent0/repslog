@@ -71,8 +71,8 @@ echo "Created Workout-Exercise ID: $WE_ID"
 
 echo "Testing: repslog workout-exercise add --goal-reps"
 GOAL_WE=$($REPSLOG workout-exercise add $WORKOUT_ID "Pullups" --goal-reps 30)
-$REPSLOG set add $GOAL_WE --reps 10 --rir 1.0
-$REPSLOG set add $GOAL_WE --reps 8 --rir 0.5
+$REPSLOG set add $GOAL_WE --reps 10 --weight 82 --rir 1.0
+$REPSLOG set add $GOAL_WE --reps 8 --weight 82 --rir 0.5
 
 echo "Testing: repslog workout-exercise list --json"
 $REPSLOG workout-exercise list $WORKOUT_ID --json > /dev/null
@@ -83,8 +83,8 @@ $REPSLOG set add $WE_ID --reps 10 --weight 100 --rir 1.0 --effective-reps 5
 
 echo "Testing: repslog set add --duration (static holds)"
 HOLD_WE=$($REPSLOG workout-exercise add $WORKOUT_ID "Plank")
-$REPSLOG set add $HOLD_WE --duration 60 --notes "Wall sit hold"
-$REPSLOG set add $HOLD_WE --duration 45 --notes "Second hold"
+$REPSLOG set add $HOLD_WE --duration 60 --weight 82 --notes "Wall sit hold"
+$REPSLOG set add $HOLD_WE --duration 45 --weight 82 --notes "Second hold"
 
 echo "Testing: repslog set add-cluster"
 $REPSLOG set add-cluster $WE_ID \
@@ -188,7 +188,7 @@ print("  json create id:", obj["id"])
 
 echo "Testing: piping workout-exercise add to set add (stdin supported)"
 WE_ID=$($REPSLOG workout-exercise add 1 "Dips")
-echo "$WE_ID" | $REPSLOG set add --reps 10 --rir 0 > /dev/null
+echo "$WE_ID" | $REPSLOG set add --reps 10 --weight 82 --rir 0 > /dev/null
 
 echo "Cleanup: Removing temporary directory $TMP_DIR"
 rm -rf "$TMP_DIR"

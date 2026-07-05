@@ -34,6 +34,7 @@ async fn test_set_numbering() {
         None,
         None,
         None,
+        None,
         None, // side
         None,
         None,
@@ -49,6 +50,7 @@ async fn test_set_numbering() {
         we_id,
         set2_num,
         Some(12),
+        None,
         None,
         None,
         None,
@@ -102,7 +104,7 @@ async fn test_set_quick_logic() {
         .await
         .unwrap();
     repo.add_set(
-        we_id, 1, None, None, None, None, None, None, None, None, None, None, None,
+        we_id, 1, None, None, None, None, None, None, None, None, None, None, None, None,
         None, // side
         None, None, None, None, None, false,
     )
@@ -155,6 +157,7 @@ async fn test_side_and_unilateral_ordering() {
             None,
             None,
             None,
+            None,
             Some("right"),
             None,
             None,
@@ -172,6 +175,7 @@ async fn test_side_and_unilateral_ordering() {
             2,
             Some(8),
             Some(20.0),
+            None,
             None,
             None,
             None,
@@ -235,6 +239,7 @@ async fn test_set_update_and_weight_only() {
             None,
             None,
             None,
+            None,
             false,
         )
         .await
@@ -245,6 +250,8 @@ async fn test_set_update_and_weight_only() {
         sid,
         None,
         Some(20.0),
+        false,
+        None,
         None,
         None,
         None,
@@ -300,6 +307,7 @@ async fn test_set_delete_and_reorder() {
             None,
             None,
             None,
+            None,
             false,
         )
         .await
@@ -325,6 +333,7 @@ async fn test_set_delete_and_reorder() {
             None,
             None,
             None,
+            None,
             false,
         )
         .await
@@ -334,6 +343,7 @@ async fn test_set_delete_and_reorder() {
             we_id,
             3,
             Some(10),
+            None,
             None,
             None,
             None,

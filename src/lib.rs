@@ -1,3 +1,4 @@
+pub mod bodyweight;
 pub mod cli;
 pub mod commands;
 pub mod config;

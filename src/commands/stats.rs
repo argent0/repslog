@@ -8,7 +8,10 @@ use sqlx::Row;
 pub async fn handle_stats(action: StatsAction, repo: &Repository, json: bool) -> Result<()> {
     match action {
         StatsAction::Prs { exercise } => {
-            let mut query = "SELECT e.name, MAX(es.weight_kg) as max_weight, MAX(es.reps) as max_reps FROM exercise_sets es JOIN workout_exercises we ON es.workout_exercise_id = we.id JOIN exercises e ON we.exercise_id = e.id".to_string();
+            let mut query = "SELECT e.name, \
+                MAX(CASE WHEN e.equipment = 'bodyweight' THEN es.weight_kg + COALESCE(es.external_load_kg, 0) ELSE es.weight_kg END) as max_weight, \
+                MAX(es.reps) as max_reps \
+                FROM exercise_sets es JOIN workout_exercises we ON es.workout_exercise_id = we.id JOIN exercises e ON we.exercise_id = e.id".to_string();
             if let Some(ex) = exercise {
                 query.push_str(&format!(" WHERE e.name LIKE '%{}%'", ex));
             }
@@ -50,7 +53,14 @@ pub async fn handle_stats(action: StatsAction, repo: &Repository, json: bool) ->
             }
         }
         StatsAction::Volume { exercise, period } => {
-            let mut query = "SELECT e.name, SUM(es.weight_kg * es.reps) as total_volume, SUM(es.effective_reps) as total_eff_reps FROM exercise_sets es JOIN workout_exercises we ON es.workout_exercise_id = we.id JOIN exercises e ON we.exercise_id = e.id JOIN workouts w ON we.workout_id = w.id".to_string();
+            let mut query = "SELECT e.name, \
+                SUM(CASE \
+                    WHEN es.weight_kg IS NULL THEN 0 \
+                    WHEN e.equipment = 'bodyweight' THEN (es.weight_kg + COALESCE(es.external_load_kg, 0)) * es.reps \
+                    ELSE es.weight_kg * es.reps \
+                END) as total_volume, \
+                SUM(es.effective_reps) as total_eff_reps \
+                FROM exercise_sets es JOIN workout_exercises we ON es.workout_exercise_id = we.id JOIN exercises e ON we.exercise_id = e.id JOIN workouts w ON we.workout_id = w.id".to_string();
             let days = match period.as_str() {
                 "30d" => 30,
                 "90d" => 90,
@@ -137,8 +147,8 @@ pub async fn handle_stats(action: StatsAction, repo: &Repository, json: bool) ->
             }
         }
         StatsAction::History { exercise, days } => {
-            let query = "SELECT w.id AS workout_id, w.started_at, w.workout_type, e.name AS exercise_name, \
-                         es.set_number, es.reps, es.weight_kg, es.duration_seconds, es.side, es.rir, \
+            let query = "SELECT w.id AS workout_id, w.started_at, w.workout_type, e.name AS exercise_name, e.equipment AS exercise_equipment, \
+                         es.set_number, es.reps, es.weight_kg, es.external_load_kg, es.duration_seconds, es.side, es.rir, \
                          es.effective_reps, es.notes \
                          FROM exercise_sets es \
                          JOIN workout_exercises we ON es.workout_exercise_id = we.id \
@@ -159,9 +169,11 @@ pub async fn handle_stats(action: StatsAction, repo: &Repository, json: bool) ->
                 date: String,
                 workout_type: Option<String>,
                 exercise: String,
+                exercise_equipment: Option<String>,
                 set_number: i32,
                 reps: Option<i32>,
                 weight_kg: Option<f64>,
+                external_load_kg: Option<f64>,
                 duration_seconds: Option<i32>,
                 side: Option<String>,
                 rir: Option<f64>,
@@ -175,9 +187,11 @@ pub async fn handle_stats(action: StatsAction, repo: &Repository, json: bool) ->
                     date: format_datetime(r.get::<String, _>("started_at").as_str()),
                     workout_type: r.get("workout_type"),
                     exercise: r.get("exercise_name"),
+                    exercise_equipment: r.get("exercise_equipment"),
                     set_number: r.get("set_number"),
                     reps: r.get("reps"),
                     weight_kg: r.get("weight_kg"),
+                    external_load_kg: r.get("external_load_kg"),
                     duration_seconds: r.get("duration_seconds"),
                     side: r.get("side"),
                     rir: r.get("rir"),
@@ -206,9 +220,11 @@ pub async fn handle_stats(action: StatsAction, repo: &Repository, json: bool) ->
                                     .map(|d| format!("{}s", d))
                                     .unwrap_or_default()
                             }),
-                            e.weight_kg
-                                .map(|w| format!("{:.2} kg", w))
-                                .unwrap_or_default(),
+                            crate::bodyweight::format_load_display(
+                                e.exercise_equipment.as_deref(),
+                                e.weight_kg,
+                                e.external_load_kg,
+                            ),
                             e.side.clone().unwrap_or_default(),
                             e.notes.clone().unwrap_or_default(),
                         ]);
@@ -222,7 +238,7 @@ pub async fn handle_stats(action: StatsAction, repo: &Repository, json: bool) ->
         }
         StatsAction::Weight { exercise } => {
             // Basic weight progression: join to get workout date + sets with weight for the exercise
-            let query = "SELECT w.started_at, es.set_number, es.weight_kg, es.reps, es.notes \
+            let query = "SELECT w.started_at, es.set_number, es.weight_kg, es.external_load_kg, e.equipment AS exercise_equipment, es.reps, es.notes \
                          FROM exercise_sets es \
                          JOIN workout_exercises we ON es.workout_exercise_id = we.id \
                          JOIN exercises e ON we.exercise_id = e.id \
@@ -236,6 +252,8 @@ pub async fn handle_stats(action: StatsAction, repo: &Repository, json: bool) ->
                 date: String,
                 set: i32,
                 weight_kg: f64,
+                external_load_kg: Option<f64>,
+                exercise_equipment: Option<String>,
                 reps: Option<i32>,
                 notes: Option<String>,
             }
@@ -245,6 +263,8 @@ pub async fn handle_stats(action: StatsAction, repo: &Repository, json: bool) ->
                     date: format_datetime(r.get::<String, _>("started_at").as_str()),
                     set: r.get("set_number"),
                     weight_kg: r.get("weight_kg"),
+                    external_load_kg: r.get("external_load_kg"),
+                    exercise_equipment: r.get("exercise_equipment"),
                     reps: r.get("reps"),
                     notes: r.get("notes"),
                 });
@@ -252,18 +272,22 @@ pub async fn handle_stats(action: StatsAction, repo: &Repository, json: bool) ->
             if json {
                 print_json(&loads)?;
             } else {
-                println!("Weight history for exercises matching '{}':", exercise);
+                println!("Load history for exercises matching '{}':", exercise);
                 let mut rows = Vec::new();
                 for l in &loads {
                     rows.push(vec![
                         l.date.clone(),
                         l.set.to_string(),
-                        format!("{:.2} kg", l.weight_kg),
+                        crate::bodyweight::format_load_display(
+                            l.exercise_equipment.as_deref(),
+                            Some(l.weight_kg),
+                            l.external_load_kg,
+                        ),
                         l.reps.map(|r| r.to_string()).unwrap_or_default(),
                         l.notes.clone().unwrap_or_default(),
                     ]);
                 }
-                print_table(vec!["Date", "Set", "Weight", "Reps", "Notes"], rows);
+                print_table(vec!["Date", "Set", "Load", "Reps", "Notes"], rows);
             }
         }
     }

@@ -186,8 +186,8 @@ impl Repository {
     pub async fn list_workout_exercises(
         &self,
         workout_id: i64,
-    ) -> Result<Vec<(WorkoutExercise, String)>> {
-        let res = sqlx::query("SELECT we.*, e.name as exercise_name FROM workout_exercises we JOIN exercises e ON we.exercise_id = e.id WHERE we.workout_id = ? ORDER BY we.\"order\"")
+    ) -> Result<Vec<(WorkoutExercise, String, Option<String>)>> {
+        let res = sqlx::query("SELECT we.*, e.name as exercise_name, e.equipment as exercise_equipment FROM workout_exercises we JOIN exercises e ON we.exercise_id = e.id WHERE we.workout_id = ? ORDER BY we.\"order\"")
             .bind(workout_id)
             .fetch_all(&self.pool)
             .await?;
@@ -205,10 +205,25 @@ impl Repository {
                         goal_reps: r.get("goal_reps"),
                     },
                     r.get("exercise_name"),
+                    r.get("exercise_equipment"),
                 )
             })
             .collect();
         Ok(exercises)
+    }
+
+    pub async fn get_exercise_for_workout_exercise(
+        &self,
+        workout_exercise_id: i64,
+    ) -> Result<Option<Exercise>> {
+        Ok(sqlx::query_as::<_, Exercise>(
+            "SELECT e.* FROM exercises e \
+             JOIN workout_exercises we ON we.exercise_id = e.id \
+             WHERE we.id = ?",
+        )
+        .bind(workout_exercise_id)
+        .fetch_optional(&self.pool)
+        .await?)
     }
 
     pub async fn get_max_order_for_workout(&self, workout_id: i64) -> Result<i32> {
@@ -229,6 +244,7 @@ impl Repository {
         set_number: i32,
         reps: Option<i32>,
         weight: Option<f64>,
+        external_load: Option<f64>,
         duration: Option<i32>,
         distance: Option<f64>,
         rpe: Option<f64>,
@@ -250,14 +266,15 @@ impl Repository {
             return self.get_next_id("exercise_sets").await;
         }
         let res = sqlx::query("INSERT INTO exercise_sets (
-            workout_exercise_id, set_number, reps, weight_kg, duration_seconds, distance_km, rpe, rir, 
+            workout_exercise_id, set_number, reps, weight_kg, external_load_kg, duration_seconds, distance_km, rpe, rir, 
             effective_reps, cluster_id, rest_seconds, notes, side, avg_heart_rate_bpm, max_heart_rate_bpm, 
             heart_rate_zones, avg_pace_min_per_km, calories_burned, laps
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
             .bind(workout_exercise_id)
             .bind(set_number)
             .bind(reps)
             .bind(weight)
+            .bind(external_load)
             .bind(duration)
             .bind(distance)
             .bind(rpe)
@@ -341,6 +358,8 @@ impl Repository {
         id: i64,
         reps: Option<i32>,
         weight: Option<f64>,
+        clear_weight: bool,
+        external_load: Option<f64>,
         duration: Option<i32>,
         distance: Option<f64>,
         rpe: Option<f64>,
@@ -357,7 +376,8 @@ impl Repository {
         sqlx::query(
             "UPDATE exercise_sets SET \
              reps = COALESCE(?, reps), \
-             weight_kg = COALESCE(?, weight_kg), \
+             weight_kg = CASE WHEN ? THEN NULL WHEN ? IS NOT NULL THEN ? ELSE weight_kg END, \
+             external_load_kg = COALESCE(?, external_load_kg), \
              duration_seconds = COALESCE(?, duration_seconds), \
              distance_km = COALESCE(?, distance_km), \
              rpe = COALESCE(?, rpe), \
@@ -369,7 +389,10 @@ impl Repository {
              WHERE id = ?",
         )
         .bind(reps)
+        .bind(clear_weight)
         .bind(weight)
+        .bind(weight)
+        .bind(external_load)
         .bind(duration)
         .bind(distance)
         .bind(rpe)

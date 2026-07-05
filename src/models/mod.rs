@@ -69,6 +69,7 @@ pub struct ExerciseSet {
     pub set_number: i32,
     pub reps: Option<i32>,
     pub weight_kg: Option<f64>,
+    pub external_load_kg: Option<f64>,
     pub distance_km: Option<f64>,
     pub duration_seconds: Option<i32>,
     pub rpe: Option<f64>,

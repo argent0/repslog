@@ -16,7 +16,7 @@ Welcome to the official documentation for `repslog`, a Linux-first command-line 
 
 - **Explicit is better than implicit:** Every critical field that affects the meaning of the data must be explicitly supplied.
 - **Scriptable:** Designed to be used in shell pipelines and automated workflows.
-- **Flexibility:** Supports everything from simple bodyweight sets to complex rest-pause clusters and detailed cardio metrics.
+- **Flexibility:** Supports bodyweight training (body mass + external load), barbell work, rest-pause clusters, and detailed cardio metrics.
 - **Privacy:** Your data stays on your machine in a local SQLite database.
 
 ## Testable Examples

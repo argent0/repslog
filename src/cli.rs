@@ -224,19 +224,33 @@ pub enum WorkoutExerciseAction {
 pub enum SetAction {
     /// Add a set to a workout exercise.
     ///
-    /// Strength: `--reps`, `--weight`, `--rir`, `--effective-reps`
-    /// Static holds: `--duration <seconds>` (omit --reps)
+    /// Barbell/dumbbell: `--weight` is the load on the bar.
+    /// Bodyweight (equipment=bodyweight): `--weight` is your body mass in kg (required);
+    ///   use `--external-load` for vest/belt weight (optional); use negative values for assistance.
+    ///   Omitting body weight requires `--no-weight-recorded` (not recommended; prints a warning).
+    /// Static holds: `--duration <seconds>` (omit --reps); bodyweight holds still need `--weight`.
     /// Unilateral: add `--side left|right|both`
     ///
-    /// Example (strength): repslog set add 1 --reps 10 --weight 60 --rir 0.0 --effective-reps 5
-    /// Example (hold):     repslog set add 1 --duration 60 --notes "Wall sit"
-    /// Example (unilateral): repslog set add 1 --reps 8 --weight 20 --side left
+    /// Example (barbell):    repslog set add 1 --reps 10 --weight 60 --rir 0.0 --effective-reps 5
+    /// Example (bodyweight): repslog set add 1 --reps 8 --weight 82 --external-load 5
+    /// Example (hold):       repslog set add 1 --duration 60 --weight 82 --notes "Wall sit"
+    /// Example (unilateral): repslog set add 1 --reps 8 --weight 82 --side left
     Add {
         workout_exercise_id: Option<String>,
         #[arg(short, long)]
         reps: Option<i32>,
-        #[arg(short, long)]
+        #[arg(
+            short,
+            long,
+            help = "Load in kg (barbell/dumbbell) or body mass in kg for bodyweight exercises"
+        )]
         weight: Option<f64>,
+        /// Added load in kg on top of body weight (vest, belt). Bodyweight exercises only.
+        #[arg(long = "external-load")]
+        external_load: Option<f64>,
+        /// Skip recording body weight (not recommended; set excluded from volume stats)
+        #[arg(long = "no-weight-recorded")]
+        no_weight_recorded: bool,
         #[arg(
             short,
             long,
@@ -311,12 +325,21 @@ pub enum SetAction {
         dry_run: bool,
     },
     /// Add a rest-pause/cluster set sequence.
-    /// Example: repslog set add-cluster 1 --reps "10,5,5" --weight 100 --rir "0,0,1" --effective-reps "6,4,3" --rest 15
+    /// Example (barbell):    repslog set add-cluster 1 --reps "10,5,5" --weight 100 --rir "0,0,1" --effective-reps "6,4,3" --rest 15
+    /// Example (bodyweight): repslog set add-cluster 1 --reps "3,3,2" --weight 82 --external-load 5 --rir "0,0,1" --effective-reps "2,2,1" --rest 15
     #[command(name = "add-cluster")]
     AddCluster {
         workout_exercise_id: Option<String>,
-        #[arg(short, long)]
+        #[arg(
+            short,
+            long,
+            help = "Load in kg (barbell/dumbbell) or body mass in kg for bodyweight exercises"
+        )]
         weight: Option<f64>,
+        #[arg(long = "external-load")]
+        external_load: Option<f64>,
+        #[arg(long = "no-weight-recorded")]
+        no_weight_recorded: bool,
         /// Reps for each cluster separated by commas (e.g. "10,5,5")
         #[arg(short, long)]
         reps: String,
@@ -340,22 +363,47 @@ pub enum SetAction {
     },
     /// List sets for a workout exercise
     List { workout_exercise_id: i64 },
-    /// Convenience: add exercise + first set in one go
+    /// Add an exercise to a workout. For bodyweight exercises, also logs the first set when
+    /// --reps, --duration, or --weight is provided (body weight required unless --no-weight-recorded).
     Quick {
         workout_id: String,
         exercise_name_or_id: String,
+        #[arg(short, long)]
+        reps: Option<i32>,
+        #[arg(
+            short,
+            long,
+            help = "Body mass in kg for bodyweight exercises, or load for weighted exercises"
+        )]
+        weight: Option<f64>,
+        #[arg(long = "external-load")]
+        external_load: Option<f64>,
+        #[arg(long = "no-weight-recorded")]
+        no_weight_recorded: bool,
+        #[arg(short, long)]
+        duration: Option<i32>,
+        #[arg(short, long)]
+        notes: Option<String>,
         /// Show what would be added (no changes)
         #[arg(long)]
         dry_run: bool,
     },
     /// Update any field on an existing set (reps, weight, notes, rir, side, etc.).
-    /// Example: repslog set update 287 --reps 10 --weight 20 --notes "Left leg" --side left
+    /// Example: repslog set update 287 --reps 10 --weight 82 --external-load 5 --notes "Left leg" --side left
     Update {
         set_id: String,
         #[arg(short, long)]
         reps: Option<i32>,
-        #[arg(short, long)]
+        #[arg(
+            short,
+            long,
+            help = "Load in kg (barbell/dumbbell) or body mass in kg for bodyweight exercises"
+        )]
         weight: Option<f64>,
+        #[arg(long = "external-load")]
+        external_load: Option<f64>,
+        #[arg(long = "no-weight-recorded")]
+        no_weight_recorded: bool,
         #[arg(long)]
         duration: Option<i32>,
         #[arg(long)]
@@ -400,15 +448,23 @@ pub enum SetAction {
     },
     /// Add matching left + right (or both) sets in one go for unilateral work.
     /// reps (and optional rir/effective-reps) are provided as comma lists, like add-cluster.
-    /// Example: repslog set add-unilateral 83 --reps "8,10,10,10" --weight 20 --side both
+    /// Example: repslog set add-unilateral 83 --reps "8,10,10,10" --weight 82 --side both
     #[command(name = "add-unilateral")]
     AddUnilateral {
         workout_exercise_id: Option<String>,
         /// Reps for the sets (comma-separated). One set per value will be created per side.
         #[arg(short, long)]
         reps: String,
-        #[arg(short, long)]
+        #[arg(
+            short,
+            long,
+            help = "Load in kg (barbell/dumbbell) or body mass in kg for bodyweight exercises"
+        )]
         weight: Option<f64>,
+        #[arg(long = "external-load")]
+        external_load: Option<f64>,
+        #[arg(long = "no-weight-recorded")]
+        no_weight_recorded: bool,
         /// RIR values (comma-separated, same length as reps)
         #[arg(long)]
         rir: Option<String>,
@@ -447,8 +503,8 @@ pub enum StatsAction {
         #[arg(short, long, default_value_t = 30)]
         days: i64,
     },
-    /// Weight progression / load history for a specific exercise (chronological).
-    /// Useful for tracking progressive overload on unilateral or bilateral lifts.
+    /// Load progression for a specific exercise (chronological).
+    /// Bodyweight: shows body mass and external load; barbell: shows bar load.
     Weight {
         #[arg(short, long)]
         exercise: String,
