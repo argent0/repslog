@@ -176,6 +176,66 @@ async fn test_stats_volume() {
 }
 
 #[tokio::test]
+async fn test_stats_volume_with_null_weight_returns_real() {
+    let pool = setup_test_db().await.unwrap();
+    let repo = Repository::new(pool);
+
+    let ex_id = repo
+        .add_exercise("push up", "calisthenics", None, None, None, false, false)
+        .await
+        .unwrap();
+    let w_id = repo
+        .create_workout(Some("Calisthenics"), None, None, false)
+        .await
+        .unwrap();
+    let we_id = repo
+        .add_workout_exercise(w_id, ex_id, 1, None, None, false)
+        .await
+        .unwrap();
+
+    repo.add_set(
+        we_id,
+        1,
+        Some(10),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        false,
+    )
+    .await
+    .unwrap();
+
+    let query = "SELECT e.name, \
+        SUM(CASE \
+            WHEN es.weight_kg IS NULL THEN 0.0 \
+            WHEN e.equipment = 'bodyweight' THEN (es.weight_kg + COALESCE(es.external_load_kg, 0)) * es.reps \
+            ELSE es.weight_kg * es.reps \
+        END) as total_volume \
+        FROM exercise_sets es \
+        JOIN workout_exercises we ON es.workout_exercise_id = we.id \
+        JOIN exercises e ON we.exercise_id = e.id \
+        GROUP BY e.name";
+    let res = sqlx::query(&query).fetch_one(&repo.pool).await.unwrap();
+
+    assert_eq!(res.get::<String, _>("name"), "push up");
+    assert_eq!(res.get::<f64, _>("total_volume"), 0.0);
+}
+
+#[tokio::test]
 async fn test_stats_history_lists_each_set_in_date_range() {
     let pool = setup_test_db().await.unwrap();
     let repo = Repository::new(pool);

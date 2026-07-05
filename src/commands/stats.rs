@@ -55,7 +55,7 @@ pub async fn handle_stats(action: StatsAction, repo: &Repository, json: bool) ->
         StatsAction::Volume { exercise, period } => {
             let mut query = "SELECT e.name, \
                 SUM(CASE \
-                    WHEN es.weight_kg IS NULL THEN 0 \
+                    WHEN es.weight_kg IS NULL THEN 0.0 \
                     WHEN e.equipment = 'bodyweight' THEN (es.weight_kg + COALESCE(es.external_load_kg, 0)) * es.reps \
                     ELSE es.weight_kg * es.reps \
                 END) as total_volume, \
