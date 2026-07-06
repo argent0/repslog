@@ -15,9 +15,9 @@ repslog set add <WE_ID> --reps 10 --weight 100 --rir 1.0 --effective-reps 5
 
 ### Parameters
 - `--reps <INT>`: Number of repetitions.
-- `--weight <FLOAT>`: Load in kg. For barbell/dumbbell exercises this is the weight on the bar. For **bodyweight** exercises (`equipment=bodyweight`) this is **your body mass in kg** (required on every strength/hold set).
-- `--external-load <FLOAT>`: Added load in kg on top of body weight (vest, belt, etc.). Bodyweight exercises only. Use negative values for band assistance.
-- `--no-weight-recorded`: Skip recording body weight on a bodyweight set. Prints a warning and excludes the set from volume stats. **Not recommended.**
+- `--weight <FLOAT>`: Load in kg. For `load_type=external` exercises this is the weight on the bar. For **`load_type=body_mass`** exercises this is **your body mass in kg** (required on every strength/hold set).
+- `--external-load <FLOAT>`: Added load in kg on top of body weight (vest, belt, etc.). `load_type=body_mass` only. Use negative values for band assistance.
+- `--no-weight-recorded`: Skip recording body weight on a body-mass set. Prints a warning and excludes the set from volume stats. **Not recommended.**
 - `--duration <INT>`: Hold duration in seconds (for static/timed work; omit `--reps`).
 - `--rir <FLOAT>`: Reps In Reserve (e.g., 0.0 for failure).
 - `--effective-reps <INT>`: Number of stimulating reps.
@@ -27,7 +27,7 @@ repslog set add <WE_ID> --reps 10 --weight 100 --rir 1.0 --effective-reps 5
 
 ## Bodyweight & Calisthenics
 
-For exercises with `equipment=bodyweight`, `--weight` always means **your body mass in kg**, not “zero because it’s bodyweight.” Record it on every set so volume stats and load history stay complete.
+For exercises with `load_type=body_mass` (pull-ups, ring dips, etc.), `--weight` always means **your body mass in kg**, not “zero because it’s bodyweight.” Record it on every set so volume stats and load history stay complete.
 
 ```bash
 WE=$(repslog workout-exercise add <WORKOUT_ID> "pull up")

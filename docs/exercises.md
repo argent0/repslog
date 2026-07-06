@@ -32,17 +32,36 @@ You can add custom exercises to fit your training routine.
 repslog exercise add "Bulgarian Split Squat" \
   --category strength \
   --equipment dumbbell \
+  --load-type external \
   --muscles "quads,glutes" \
   --description "One leg elevated on a bench behind you."
+```
+
+Ring dips use apparatus and load semantics separately:
+
+```bash
+repslog exercise add "ring dip" \
+  --category calisthenics \
+  --equipment rings \
+  --load-type body_mass
+```
+
+Update metadata on an existing exercise:
+
+```bash
+repslog exercise update "ring dip" --equipment rings --load-type body_mass
 ```
 
 ### Parameters
 
 - `<NAME>`: The name of the exercise (required, unique).
 - `--category <CAT>`: The type of exercise (e.g., strength, cardio, calisthenics, flexibility).
-- `--equipment <EQ>`: The equipment needed (e.g., barbell, dumbbell, bodyweight, machine).
+- `--equipment <EQ>`: Apparatus used (e.g., barbell, dumbbell, rings, parallel bars, none).
+- `--load-type <TYPE>`: How `--weight` is interpreted: `body_mass`, `external`, or `none`. Defaults from category when omitted (`calisthenics` → `body_mass`, `cardio` → `none`, otherwise `external`).
 - `--muscles <MUSCLES>`: A comma-separated list of muscle groups.
 - `--description <DESC>`: A brief explanation of the exercise.
+
+`exercise update` accepts the same optional fields plus `--clear-equipment` to remove apparatus.
 
 ## Exercise Categories
 

@@ -371,10 +371,9 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                     .collect();
                 print_json(&outs)?;
             } else {
-                let equipment = repo
+                let exercise = repo
                     .get_exercise_for_workout_exercise(workout_exercise_id)
-                    .await?
-                    .and_then(|e| e.equipment);
+                    .await?;
                 let mut rows = Vec::new();
                 for s in sets.iter() {
                     let cluster_label = if let Some(cid) = s.cluster_id {
@@ -412,7 +411,10 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                         side_label,
                         s.reps.map(|r| r.to_string()).unwrap_or_default(),
                         bodyweight::format_load_display(
-                            equipment.as_deref(),
+                            exercise
+                                .as_ref()
+                                .map(|e| e.load_type.as_str())
+                                .unwrap_or(crate::load_type::EXTERNAL),
                             s.weight_kg,
                             s.external_load_kg,
                         ),
@@ -761,7 +763,7 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                                 weight,
                                 external_load,
                                 no_weight_recorded,
-                                bodyweight::is_bodyweight(&ex),
+                                bodyweight::uses_body_mass(&ex),
                             )?
                         };
                     let set_id = repo
@@ -805,9 +807,9 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                         "Added exercise {} to workout {} (WE ID {}). Log sets with repslog set add.",
                         ex.name, workout_id, format_dry_run_id(we_id, dry_run)
                     );
-                    if bodyweight::is_bodyweight(&ex) {
+                    if bodyweight::uses_body_mass(&ex) {
                         eprintln!(
-                            "Tip: bodyweight exercises require --weight <body-mass-kg> on each set."
+                            "Tip: body-mass exercises (load_type=body_mass) require --weight <body-mass-kg> on each set."
                         );
                     }
                 }
@@ -845,7 +847,7 @@ async fn resolve_load_for_workout_exercise(
         })?;
     let requires_body_weight =
         bodyweight::is_strength_metric_set(reps, weight, duration, external_load)
-            && bodyweight::is_bodyweight(&exercise);
+            && bodyweight::uses_body_mass(&exercise);
     bodyweight::resolve_bodyweight_load(
         &exercise,
         weight,
@@ -874,11 +876,12 @@ async fn resolve_load_for_set_update(
             ))
         })?;
 
-    if !bodyweight::is_bodyweight(&exercise) {
-        bodyweight::validate_external_load_for_equipment(&exercise, external_load)?;
+    if !bodyweight::uses_body_mass(&exercise) {
+        bodyweight::validate_external_load(&exercise.load_type, external_load)?;
         if no_weight_recorded {
             return Err(RepslogError::Cli(
-                "--no-weight-recorded is only valid for bodyweight exercises.".into(),
+                "--no-weight-recorded is only valid for body-mass exercises (load_type=body_mass)."
+                    .into(),
             ));
         }
         return Ok((weight, external_load, false));
@@ -900,7 +903,7 @@ async fn resolve_load_for_set_update(
         return Ok((weight, external_load, false));
     }
 
-    bodyweight::validate_external_load_for_equipment(&exercise, external_load)?;
+    bodyweight::validate_external_load(&exercise.load_type, external_load)?;
 
     if no_weight_recorded {
         if weight.is_some() {
@@ -927,7 +930,7 @@ async fn resolve_load_for_set_update(
 
     if final_reps.is_some() || final_duration.is_some() {
         return Err(RepslogError::Cli(format!(
-            "Bodyweight exercise '{}' requires --weight <kg> (your body mass) \
+            "Exercise '{}' (load_type=body_mass) requires --weight <kg> (your body mass) \
              or --no-weight-recorded (not recommended).",
             exercise.name
         )));

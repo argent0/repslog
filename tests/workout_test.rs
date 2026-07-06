@@ -55,11 +55,11 @@ async fn test_workout_exercise_order() {
     let repo = Repository::new(pool);
 
     let ex1 = repo
-        .add_exercise("Ex1", "cat", None, None, None, false, false)
+        .add_exercise("Ex1", "cat", None, None, "external", None, false, false)
         .await
         .unwrap();
     let ex2 = repo
-        .add_exercise("Ex2", "cat", None, None, None, false, false)
+        .add_exercise("Ex2", "cat", None, None, "external", None, false, false)
         .await
         .unwrap();
     let w_id = repo.create_workout(None, None, None, false).await.unwrap();

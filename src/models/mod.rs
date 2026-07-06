@@ -9,6 +9,7 @@ pub struct Exercise {
     pub category: String,
     pub muscle_groups: Option<String>,
     pub equipment: Option<String>,
+    pub load_type: String,
     pub description: Option<String>,
     pub is_custom: i32,
     pub created_at: Option<String>,

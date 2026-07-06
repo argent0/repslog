@@ -24,7 +24,7 @@ repslog stats volume --period 30d
 repslog stats volume --exercise "Bench Press" --period 1y
 ```
 
-Volume is computed as `reps × load`. For barbell exercises, load is `--weight`. For bodyweight exercises, load is `--weight` (body mass) plus `--external-load` (vest/belt; negative for assistance). Sets logged with `--no-weight-recorded` contribute **zero** volume.
+Volume is computed as `reps × load`. For `load_type=external` exercises, load is `--weight`. For `load_type=body_mass` exercises, load is `--weight` (body mass) plus `--external-load` (vest/belt; negative for assistance). Sets logged with `--no-weight-recorded` contribute **zero** volume.
 
 ## Training Summary
 
@@ -51,7 +51,7 @@ repslog stats weight --exercise "bulgarian split squat"
 repslog stats weight --exercise "pull up"
 ```
 
-Output is ordered by date and includes the set number, load, reps, and any notes. For bodyweight exercises, load shows body mass and external load (e.g. `82.0 kg BW +5.0 kg`). Sets without recorded body weight are omitted.
+Output is ordered by date and includes the set number, load, reps, and any notes. For `load_type=body_mass` exercises, load shows body mass and external load (e.g. `82.0 kg BW +5.0 kg`). Sets without recorded body weight are omitted.
 
 ## Set History (per workout)
 

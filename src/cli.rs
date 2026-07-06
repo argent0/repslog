@@ -92,20 +92,48 @@ pub enum ExerciseAction {
     ///
     ///   repslog exercise search "pull"
     ///
-    ///   repslog exercise add "bulgarian split squat" --category strength --equipment dumbbell
+    ///   repslog exercise add "ring dip" --category calisthenics --equipment rings --load-type body_mass
+    ///
+    ///   repslog exercise add "bulgarian split squat" --category strength --equipment dumbbell --load-type external
     Add {
         /// Exercise name (lowercase, singular; use spaces between words)
         #[arg(help = "Exercise name (lowercase, singular, e.g. pull up)")]
         name: String,
         #[arg(short, long)]
         category: String,
+        /// Apparatus used (e.g. barbell, rings, parallel bars, none)
         #[arg(short, long)]
         equipment: Option<String>,
+        /// How --weight is interpreted: body_mass, external, or none
+        #[arg(long = "load-type")]
+        load_type: Option<String>,
         #[arg(short, long)]
         muscles: Option<String>,
         #[arg(short, long)]
         description: Option<String>,
         /// Show what would be added (no changes)
+        #[arg(long)]
+        dry_run: bool,
+    },
+    /// Update exercise metadata (equipment, load type, category, etc.)
+    ///
+    /// Example: repslog exercise update "ring dip" --equipment rings --load-type body_mass
+    Update {
+        exercise_id_or_name: String,
+        #[arg(short, long)]
+        category: Option<String>,
+        #[arg(short, long)]
+        equipment: Option<String>,
+        /// Clear apparatus (sets equipment to NULL)
+        #[arg(long = "clear-equipment")]
+        clear_equipment: bool,
+        #[arg(long = "load-type")]
+        load_type: Option<String>,
+        #[arg(short, long)]
+        muscles: Option<String>,
+        #[arg(short, long)]
+        description: Option<String>,
+        /// Show what would be updated (no changes)
         #[arg(long)]
         dry_run: bool,
     },
@@ -225,10 +253,10 @@ pub enum SetAction {
     /// Add a set to a workout exercise.
     ///
     /// Barbell/dumbbell: `--weight` is the load on the bar.
-    /// Bodyweight (equipment=bodyweight): `--weight` is your body mass in kg (required);
+    /// Body-mass (load_type=body_mass): `--weight` is your body mass in kg (required);
     ///   use `--external-load` for vest/belt weight (optional); use negative values for assistance.
     ///   Omitting body weight requires `--no-weight-recorded` (not recommended; prints a warning).
-    /// Static holds: `--duration <seconds>` (omit --reps); bodyweight holds still need `--weight`.
+    /// Static holds: `--duration <seconds>` (omit --reps); body-mass holds still need `--weight`.
     /// Unilateral: add `--side left|right|both`
     ///
     /// Example (barbell):    repslog set add 1 --reps 10 --weight 60 --rir 0.0 --effective-reps 5

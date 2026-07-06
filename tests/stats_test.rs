@@ -13,6 +13,7 @@ async fn test_stats_prs() {
             "strength",
             None,
             Some("barbell"),
+            "external",
             None,
             false,
             false,
@@ -100,6 +101,7 @@ async fn test_stats_volume() {
             "strength",
             None,
             Some("dumbbell"),
+            "external",
             None,
             false,
             false,
@@ -181,7 +183,16 @@ async fn test_stats_volume_with_null_weight_returns_real() {
     let repo = Repository::new(pool);
 
     let ex_id = repo
-        .add_exercise("push up", "calisthenics", None, None, None, false, false)
+        .add_exercise(
+            "push up",
+            "calisthenics",
+            None,
+            None,
+            "body_mass",
+            None,
+            false,
+            false,
+        )
         .await
         .unwrap();
     let w_id = repo
@@ -222,7 +233,7 @@ async fn test_stats_volume_with_null_weight_returns_real() {
     let query = "SELECT e.name, \
         SUM(CASE \
             WHEN es.weight_kg IS NULL THEN 0.0 \
-            WHEN e.equipment = 'bodyweight' THEN (es.weight_kg + COALESCE(es.external_load_kg, 0)) * es.reps \
+            WHEN e.load_type = 'body_mass' THEN (es.weight_kg + COALESCE(es.external_load_kg, 0)) * es.reps \
             ELSE es.weight_kg * es.reps \
         END) as total_volume \
         FROM exercise_sets es \
@@ -241,7 +252,16 @@ async fn test_stats_history_lists_each_set_in_date_range() {
     let repo = Repository::new(pool);
 
     let ex_id = repo
-        .add_exercise("push up", "calisthenics", None, None, None, false, false)
+        .add_exercise(
+            "push up",
+            "calisthenics",
+            None,
+            None,
+            "body_mass",
+            None,
+            false,
+            false,
+        )
         .await
         .unwrap();
 

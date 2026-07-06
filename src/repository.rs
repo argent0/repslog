@@ -22,6 +22,7 @@ impl Repository {
         category: &str,
         muscle_groups: Option<&str>,
         equipment: Option<&str>,
+        load_type: &str,
         description: Option<&str>,
         is_custom: bool,
         dry_run: bool,
@@ -29,16 +30,81 @@ impl Repository {
         if dry_run {
             return self.get_next_id("exercises").await;
         }
-        let res = sqlx::query("INSERT INTO exercises (name, category, muscle_groups, equipment, description, is_custom) VALUES (?, ?, ?, ?, ?, ?)")
-            .bind(name)
-            .bind(category)
-            .bind(muscle_groups)
-            .bind(equipment)
-            .bind(description)
-            .bind(is_custom as i32)
-            .execute(&self.pool)
-            .await?;
+        let res = sqlx::query(
+            "INSERT INTO exercises (name, category, muscle_groups, equipment, load_type, description, is_custom) \
+             VALUES (?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(name)
+        .bind(category)
+        .bind(muscle_groups)
+        .bind(equipment)
+        .bind(load_type)
+        .bind(description)
+        .bind(is_custom as i32)
+        .execute(&self.pool)
+        .await?;
         Ok(res.last_insert_rowid())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn update_exercise(
+        &self,
+        id: i64,
+        category: Option<&str>,
+        equipment: Option<Option<&str>>,
+        load_type: Option<&str>,
+        muscle_groups: Option<&str>,
+        description: Option<&str>,
+        dry_run: bool,
+    ) -> Result<()> {
+        if dry_run {
+            return Ok(());
+        }
+
+        let mut sets = Vec::new();
+        if category.is_some() {
+            sets.push("category = ?".to_string());
+        }
+        if let Some(value) = equipment {
+            match value {
+                Some(_) => sets.push("equipment = ?".to_string()),
+                None => sets.push("equipment = NULL".to_string()),
+            }
+        }
+        if load_type.is_some() {
+            sets.push("load_type = ?".to_string());
+        }
+        if muscle_groups.is_some() {
+            sets.push("muscle_groups = ?".to_string());
+        }
+        if description.is_some() {
+            sets.push("description = ?".to_string());
+        }
+
+        if sets.is_empty() {
+            return Ok(());
+        }
+
+        let sql = format!("UPDATE exercises SET {} WHERE id = ?", sets.join(", "));
+        let mut query = sqlx::query(&sql);
+        if let Some(value) = category {
+            query = query.bind(value);
+        }
+        if let Some(Some(eq)) = equipment {
+            query = query.bind(eq);
+        }
+        if let Some(value) = load_type {
+            query = query.bind(value);
+        }
+        if let Some(value) = muscle_groups {
+            query = query.bind(value);
+        }
+        if let Some(value) = description {
+            query = query.bind(value);
+        }
+        query = query.bind(id);
+        query.execute(&self.pool).await?;
+        Ok(())
     }
 
     pub async fn list_exercises(
@@ -186,11 +252,17 @@ impl Repository {
     pub async fn list_workout_exercises(
         &self,
         workout_id: i64,
-    ) -> Result<Vec<(WorkoutExercise, String, Option<String>)>> {
-        let res = sqlx::query("SELECT we.*, e.name as exercise_name, e.equipment as exercise_equipment FROM workout_exercises we JOIN exercises e ON we.exercise_id = e.id WHERE we.workout_id = ? ORDER BY we.\"order\"")
-            .bind(workout_id)
-            .fetch_all(&self.pool)
-            .await?;
+    ) -> Result<Vec<(WorkoutExercise, String, String)>> {
+        let res = sqlx::query(
+            "SELECT we.*, e.name as exercise_name, e.load_type as exercise_load_type \
+             FROM workout_exercises we \
+             JOIN exercises e ON we.exercise_id = e.id \
+             WHERE we.workout_id = ? \
+             ORDER BY we.\"order\"",
+        )
+        .bind(workout_id)
+        .fetch_all(&self.pool)
+        .await?;
 
         let exercises = res
             .into_iter()
@@ -205,7 +277,7 @@ impl Repository {
                         goal_reps: r.get("goal_reps"),
                     },
                     r.get("exercise_name"),
-                    r.get("exercise_equipment"),
+                    r.get("exercise_load_type"),
                 )
             })
             .collect();

@@ -15,6 +15,7 @@ async fn test_cardio_tracking() {
             "cardio",
             Some("[\"legs\"]"),
             Some("none"),
+            "none",
             Some("Evening run"),
             false,
             false,

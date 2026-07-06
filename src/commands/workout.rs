@@ -328,7 +328,7 @@ pub async fn handle_workout(action: WorkoutAction, repo: &Repository, json: bool
                     }
 
                     println!("\n{}", "EXERCISES".bold().yellow());
-                    for (we, name, equipment) in exercises {
+                    for (we, name, load_type) in exercises {
                         println!("{} (WE ID: {})", name.bold(), we.id.to_string().dimmed());
                         if let Some(ref notes) = we.notes {
                             println!("Notes: {}", notes);
@@ -363,7 +363,7 @@ pub async fn handle_workout(action: WorkoutAction, repo: &Repository, json: bool
                                 details.push(format!("{} reps", reps));
                             }
                             let load = crate::bodyweight::format_load_display(
-                                equipment.as_deref(),
+                                &load_type,
                                 s.weight_kg,
                                 s.external_load_kg,
                             );
