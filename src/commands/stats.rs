@@ -12,12 +12,21 @@ pub async fn handle_stats(action: StatsAction, repo: &Repository, json: bool) ->
                 MAX(CASE WHEN e.load_type = 'body_mass' THEN es.weight_kg + COALESCE(es.external_load_kg, 0) ELSE es.weight_kg END) as max_weight, \
                 MAX(es.reps) as max_reps \
                 FROM exercise_sets es JOIN workout_exercises we ON es.workout_exercise_id = we.id JOIN exercises e ON we.exercise_id = e.id".to_string();
-            if let Some(ex) = exercise {
-                query.push_str(&format!(" WHERE e.name LIKE '%{}%'", ex));
+            let exercise_name = if let Some(ref ex) = exercise {
+                Some(repo.require_exercise_by_id_or_name(ex).await?.name)
+            } else {
+                None
+            };
+            if exercise_name.is_some() {
+                query.push_str(" WHERE e.name = ?");
             }
             query.push_str(" GROUP BY e.name");
 
-            let res = sqlx::query(&query).fetch_all(&repo.pool).await?;
+            let mut q = sqlx::query(&query);
+            if let Some(ref name) = exercise_name {
+                q = q.bind(name);
+            }
+            let res = q.fetch_all(&repo.pool).await?;
             #[derive(Serialize)]
             struct Pr {
                 exercise: String,
@@ -71,12 +80,21 @@ pub async fn handle_stats(action: StatsAction, repo: &Repository, json: bool) ->
                 " WHERE w.started_at >= date('now', '-{} days')",
                 days
             ));
-            if let Some(ex) = exercise {
-                query.push_str(&format!(" AND e.name LIKE '%{}%'", ex));
+            let exercise_name = if let Some(ref ex) = exercise {
+                Some(repo.require_exercise_by_id_or_name(ex).await?.name)
+            } else {
+                None
+            };
+            if exercise_name.is_some() {
+                query.push_str(" AND e.name = ?");
             }
             query.push_str(" GROUP BY e.name");
 
-            let res = sqlx::query(&query).fetch_all(&repo.pool).await?;
+            let mut q = sqlx::query(&query);
+            if let Some(ref name) = exercise_name {
+                q = q.bind(name);
+            }
+            let res = q.fetch_all(&repo.pool).await?;
             #[derive(Serialize)]
             struct Vol {
                 exercise: String,
@@ -147,6 +165,7 @@ pub async fn handle_stats(action: StatsAction, repo: &Repository, json: bool) ->
             }
         }
         StatsAction::History { exercise, days } => {
+            let exercise_name = repo.require_exercise_by_id_or_name(&exercise).await?.name;
             let query = "SELECT w.id AS workout_id, w.started_at, w.workout_type, e.name AS exercise_name, e.load_type AS exercise_load_type, \
                          es.set_number, es.reps, es.weight_kg, es.external_load_kg, es.duration_seconds, es.side, es.rir, \
                          es.effective_reps, es.notes \
@@ -154,12 +173,11 @@ pub async fn handle_stats(action: StatsAction, repo: &Repository, json: bool) ->
                          JOIN workout_exercises we ON es.workout_exercise_id = we.id \
                          JOIN exercises e ON we.exercise_id = e.id \
                          JOIN workouts w ON we.workout_id = w.id \
-                         WHERE e.name LIKE ? AND w.started_at >= date('now', ?) \
+                         WHERE e.name = ? AND w.started_at >= date('now', ?) \
                          ORDER BY w.started_at ASC, es.set_number ASC";
-            let like = format!("%{}%", exercise);
             let days_ago = format!("-{} days", days);
             let res = sqlx::query(query)
-                .bind(&like)
+                .bind(&exercise_name)
                 .bind(&days_ago)
                 .fetch_all(&repo.pool)
                 .await?;
@@ -203,8 +221,8 @@ pub async fn handle_stats(action: StatsAction, repo: &Repository, json: bool) ->
                 print_json(&entries)?;
             } else {
                 println!(
-                    "Set history for exercises matching '{}' (last {} days):",
-                    exercise, days
+                    "Set history for '{}' (last {} days):",
+                    exercise_name, days
                 );
                 if entries.is_empty() {
                     println!("No sets found in this period.");
@@ -237,16 +255,18 @@ pub async fn handle_stats(action: StatsAction, repo: &Repository, json: bool) ->
             }
         }
         StatsAction::Weight { exercise } => {
-            // Basic weight progression: join to get workout date + sets with weight for the exercise
+            let exercise_name = repo.require_exercise_by_id_or_name(&exercise).await?.name;
             let query = "SELECT w.started_at, es.set_number, es.weight_kg, es.external_load_kg, e.load_type AS exercise_load_type, es.reps, es.notes \
                          FROM exercise_sets es \
                          JOIN workout_exercises we ON es.workout_exercise_id = we.id \
                          JOIN exercises e ON we.exercise_id = e.id \
                          JOIN workouts w ON we.workout_id = w.id \
-                         WHERE e.name LIKE ? AND es.weight_kg IS NOT NULL \
+                         WHERE e.name = ? AND es.weight_kg IS NOT NULL \
                          ORDER BY w.started_at ASC, es.set_number ASC";
-            let like = format!("%{}%", exercise);
-            let res = sqlx::query(query).bind(&like).fetch_all(&repo.pool).await?;
+            let res = sqlx::query(query)
+                .bind(&exercise_name)
+                .fetch_all(&repo.pool)
+                .await?;
             #[derive(Serialize)]
             struct Load {
                 date: String,
@@ -272,7 +292,7 @@ pub async fn handle_stats(action: StatsAction, repo: &Repository, json: bool) ->
             if json {
                 print_json(&loads)?;
             } else {
-                println!("Load history for exercises matching '{}':", exercise);
+                println!("Load history for '{}':", exercise_name);
                 let mut rows = Vec::new();
                 for l in &loads {
                     rows.push(vec![

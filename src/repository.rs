@@ -1,4 +1,4 @@
-use crate::error::Result;
+use crate::error::{RepslogError, Result};
 use crate::models::{Exercise, ExerciseSet, HeartRateZones, Lap, Workout, WorkoutExercise};
 use crate::utils::parse_datetime;
 use sqlx::sqlite::SqlitePool;
@@ -141,6 +141,12 @@ impl Repository {
                     .await?,
             )
         }
+    }
+
+    pub async fn require_exercise_by_id_or_name(&self, id_or_name: &str) -> Result<Exercise> {
+        self.find_exercise_by_id_or_name(id_or_name)
+            .await?
+            .ok_or_else(|| RepslogError::Cli(format!("Exercise '{}' not found", id_or_name)))
     }
 
     // --- Workouts ---

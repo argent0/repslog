@@ -65,4 +65,4 @@ repslog stats history --exercise "push up"
 repslog stats history --exercise "pike push up" --days 7 --json
 ```
 
-Each row is one set with the workout date, workout ID, set number, reps (or duration for holds), weight, side, and notes. Only workouts that actually include the exercise appear. Exercise names are matched with a substring search (same as `stats weight`).
+Each row is one set with the workout date, workout ID, set number, reps (or duration for holds), weight, side, and notes. Only workouts that actually include the exercise appear. Exercise names must match the catalog entry exactly (same as `stats weight`); use `repslog exercise search` to find the correct name.
