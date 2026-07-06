@@ -78,6 +78,7 @@ async fn test_cardio_tracking() {
             None,
             Some("Nice run"),
             None, // side
+            repslog::phase::FULL,
             avg_hr,
             max_hr,
             Some(Json(zones.clone())),

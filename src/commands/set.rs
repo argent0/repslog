@@ -2,6 +2,7 @@ use crate::bodyweight;
 use crate::cli::SetAction;
 use crate::error::{RepslogError, Result};
 use crate::models::Lap;
+use crate::phase::{self, format_phase_label};
 use crate::repository::Repository;
 use crate::utils::{
     format_datetime_opt, format_dry_run_id, format_duration, format_pace, parse_id, print_id,
@@ -25,6 +26,7 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
             rest_seconds,
             notes,
             side,
+            phase,
             avg_heart_rate,
             max_heart_rate,
             hr_zones,
@@ -33,6 +35,7 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
             laps,
             dry_run,
         } => {
+            let resolved_phase = phase::normalize_phase(&phase)?;
             let id_str = if let Some(id) = workout_exercise_id {
                 id
             } else if let Some(stdin_id) = read_stdin() {
@@ -94,6 +97,7 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                     rest_seconds,
                     notes.as_deref(),
                     side.as_deref().map(|s| s.to_lowercase()).as_deref(),
+                    resolved_phase,
                     avg_heart_rate,
                     max_heart_rate,
                     hr_zones.map(Json),
@@ -126,8 +130,10 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
             laps,
             notes,
             side,
+            phase,
             dry_run,
         } => {
+            let resolved_phase = phase::normalize_phase(&phase)?;
             let id_str = if let Some(id) = workout_exercise_id {
                 id
             } else if let Some(stdin_id) = read_stdin() {
@@ -165,6 +171,7 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                     None, // rest_seconds
                     notes.as_deref(),
                     side.as_deref().map(|s| s.to_lowercase()).as_deref(),
+                    resolved_phase,
                     Some(avg_heart_rate),
                     Some(max_heart_rate),
                     Some(Json(hr_zones)),
@@ -196,8 +203,10 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
             rest_seconds,
             notes,
             side,
+            phase,
             dry_run,
         } => {
+            let resolved_phase = phase::normalize_phase(&phase)?;
             let id_str = if let Some(id) = workout_exercise_id {
                 id
             } else if let Some(stdin_id) = read_stdin() {
@@ -285,6 +294,7 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                         rest,
                         notes.as_deref(),
                         side.as_deref().map(|s| s.to_lowercase()).as_deref(),
+                        resolved_phase,
                         None,
                         None,
                         None,
@@ -332,6 +342,7 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                     rest_seconds: Option<i32>,
                     notes: Option<String>,
                     side: Option<String>,
+                    phase: String,
                     extra_metrics: Option<String>,
                     avg_heart_rate_bpm: Option<f64>,
                     max_heart_rate_bpm: Option<f64>,
@@ -359,6 +370,7 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                         rest_seconds: s.rest_seconds,
                         notes: s.notes.clone(),
                         side: s.side.clone(),
+                        phase: s.phase.clone(),
                         extra_metrics: s.extra_metrics.clone(),
                         avg_heart_rate_bpm: s.avg_heart_rate_bpm,
                         max_heart_rate_bpm: s.max_heart_rate_bpm,
@@ -405,10 +417,16 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                         .as_ref()
                         .map(|sd| sd.to_uppercase())
                         .unwrap_or_else(|| "-".to_string());
+                    let phase_label = format_phase_label(&s.phase);
                     rows.push(vec![
                         s.id.to_string(),
                         format!("{}{}", s.set_number, cluster_label),
                         side_label,
+                        if phase_label.is_empty() {
+                            "full".to_string()
+                        } else {
+                            phase_label
+                        },
                         s.reps.map(|r| r.to_string()).unwrap_or_default(),
                         bodyweight::format_load_display(
                             exercise
@@ -436,7 +454,8 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                 );
                 print_table(
                     vec![
-                        "ID", "Set #", "Side", "Reps", "Weight", "Dist", "Dur", "Cardio", "Notes",
+                        "ID", "Set #", "Side", "Phase", "Reps", "Weight", "Dist", "Dur", "Cardio",
+                        "Notes",
                     ],
                     rows,
                 );
@@ -476,6 +495,7 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
             rest_seconds,
             notes,
             side,
+            phase,
             dry_run,
         } => {
             let id = parse_id(&set_id, dry_run)?;
@@ -495,6 +515,7 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                 )
                 .await?;
             let side_norm = side.as_deref().map(|s| s.to_lowercase());
+            let phase_norm = phase.as_deref().map(phase::normalize_phase).transpose()?;
             repo.update_set(
                 id,
                 reps,
@@ -509,6 +530,7 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                 rest_seconds,
                 notes.as_deref(),
                 side_norm.as_deref(),
+                phase_norm,
                 dry_run,
             )
             .await?;
@@ -587,8 +609,10 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
             rest_seconds,
             notes,
             side,
+            phase,
             dry_run,
         } => {
+            let resolved_phase = phase::normalize_phase(&phase)?;
             let id_str = if let Some(id) = workout_exercise_id {
                 id
             } else if let Some(stdin_id) = read_stdin() {
@@ -700,6 +724,7 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                             rest,
                             notes.as_deref(),
                             Some(sd),
+                            resolved_phase,
                             None,
                             None,
                             None,
@@ -735,6 +760,7 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
             no_weight_recorded,
             duration,
             notes,
+            phase,
             dry_run,
         } => {
             let w_id = parse_id(&workout_id, dry_run)?;
@@ -753,6 +779,14 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                 let logging_set =
                     bodyweight::is_strength_metric_set(reps, weight, duration, external_load);
                 if logging_set {
+                    let resolved_phase = phase
+                        .as_deref()
+                        .ok_or_else(|| {
+                            RepslogError::Cli(
+                                "--phase is required when logging a set with set quick.".into(),
+                            )
+                        })
+                        .and_then(|p| phase::normalize_phase(p))?;
                     let _id_str = format_dry_run_id(we_id, dry_run);
                     let (resolved_weight, resolved_external_load) =
                         if dry_run && workout_id.starts_with("DRY-RUN-") {
@@ -782,6 +816,7 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                             None,
                             notes.as_deref(),
                             None,
+                            resolved_phase,
                             None,
                             None,
                             None,

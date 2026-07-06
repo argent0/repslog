@@ -1,3 +1,6 @@
+mod common;
+
+use common::add_strength_set;
 use repslog::db::setup_test_db;
 use repslog::repository::Repository;
 
@@ -70,58 +73,38 @@ async fn test_workout_flow() {
     assert!(we_id > 0);
 
     // 4. Add Sets
-    let s1 = repo
-        .add_set(
-            we_id,
-            1,
-            Some(10),
-            Some(60.0),
-            None,
-            None,
-            None,
-            Some(8.0),
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None, // side
-            None,
-            None,
-            None,
-            None,
-            None,
-            false,
-        )
-        .await
-        .unwrap();
-    let s2 = repo
-        .add_set(
-            we_id,
-            2,
-            Some(10),
-            Some(60.0),
-            None,
-            None,
-            None,
-            Some(8.5),
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None, // side
-            None,
-            None,
-            None,
-            None,
-            None,
-            false,
-        )
-        .await
-        .unwrap();
+    let s1 = add_strength_set(
+        &repo,
+        we_id,
+        1,
+        Some(10),
+        Some(60.0),
+        Some(8.0),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        repslog::phase::FULL,
+    )
+    .await;
+    let s2 = add_strength_set(
+        &repo,
+        we_id,
+        2,
+        Some(10),
+        Some(60.0),
+        Some(8.5),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        repslog::phase::FULL,
+    )
+    .await;
     assert!(s1 > 0);
     assert!(s2 > 0);
 
@@ -175,32 +158,22 @@ async fn test_new_set_fields() {
     let cluster_id = Some(101i64);
     let rest_seconds = Some(90);
 
-    let s_id = repo
-        .add_set(
-            we_id,
-            1,
-            Some(5),
-            Some(100.0),
-            None,
-            None,
-            None,
-            Some(9.0),
-            rir,
-            effective_reps,
-            cluster_id,
-            rest_seconds,
-            Some("Test notes"),
-            None, // side
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            false,
-        )
-        .await
-        .unwrap();
+    let s_id = add_strength_set(
+        &repo,
+        we_id,
+        1,
+        Some(5),
+        Some(100.0),
+        Some(9.0),
+        rir,
+        effective_reps,
+        cluster_id,
+        rest_seconds,
+        Some("Test notes"),
+        None,
+        repslog::phase::FULL,
+    )
+    .await;
     assert!(s_id > 0);
 
     let sets = repo.list_sets(we_id).await.unwrap();

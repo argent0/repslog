@@ -1,5 +1,12 @@
 use crate::models::{HeartRateZones, Laps};
+use crate::phase;
 use clap::{Parser, Subcommand};
+
+fn parse_phase(s: &str) -> Result<String, String> {
+    phase::normalize_phase(s)
+        .map(|p| p.to_string())
+        .map_err(|e| e.to_string())
+}
 
 #[derive(Parser)]
 #[command(name = "repslog")]
@@ -259,10 +266,11 @@ pub enum SetAction {
     /// Static holds: `--duration <seconds>` (omit --reps); body-mass holds still need `--weight`.
     /// Unilateral: add `--side left|right|both`
     ///
-    /// Example (barbell):    repslog set add 1 --reps 10 --weight 60 --rir 0.0 --effective-reps 5
-    /// Example (bodyweight): repslog set add 1 --reps 8 --weight 82 --external-load 5
-    /// Example (hold):       repslog set add 1 --duration 60 --weight 82 --notes "Wall sit"
-    /// Example (unilateral): repslog set add 1 --reps 8 --weight 82 --side left
+    /// Example (barbell):    repslog set add 1 --reps 10 --weight 60 --phase full --rir 0.0 --effective-reps 5
+    /// Example (bodyweight): repslog set add 1 --reps 8 --weight 82 --phase full --external-load 5
+    /// Example (eccentric):  repslog set add 1 --reps 3 --weight 82 --phase eccentric
+    /// Example (hold):       repslog set add 1 --duration 60 --weight 82 --phase full --notes "Wall sit"
+    /// Example (unilateral): repslog set add 1 --reps 8 --weight 82 --phase full --side left
     Add {
         workout_exercise_id: Option<String>,
         #[arg(short, long)]
@@ -300,6 +308,9 @@ pub enum SetAction {
         /// Side for unilateral training (left, right, both). Stored separately for grouping and totals.
         #[arg(long, value_parser = ["left", "right", "both"])]
         side: Option<String>,
+        /// Rep phase: full | eccentric | concentric (required)
+        #[arg(long, value_parser = parse_phase)]
+        phase: String,
         /// Average heart rate in bpm
         #[arg(long = "avg-heart-rate")]
         avg_heart_rate: Option<f64>,
@@ -348,13 +359,16 @@ pub enum SetAction {
         /// Side for unilateral training (left, right, both)
         #[arg(long, value_parser = ["left", "right", "both"])]
         side: Option<String>,
+        /// Rep phase: full | eccentric | concentric (required)
+        #[arg(long, value_parser = parse_phase)]
+        phase: String,
         /// Show what would be added (no changes)
         #[arg(long)]
         dry_run: bool,
     },
     /// Add a rest-pause/cluster set sequence.
-    /// Example (barbell):    repslog set add-cluster 1 --reps "10,5,5" --weight 100 --rir "0,0,1" --effective-reps "6,4,3" --rest 15
-    /// Example (bodyweight): repslog set add-cluster 1 --reps "3,3,2" --weight 82 --external-load 5 --rir "0,0,1" --effective-reps "2,2,1" --rest 15
+    /// Example (barbell):    repslog set add-cluster 1 --reps "10,5,5" --weight 100 --phase full --rir "0,0,1" --effective-reps "6,4,3" --rest 15
+    /// Example (bodyweight): repslog set add-cluster 1 --reps "3,3,2" --weight 82 --phase full --external-load 5 --rir "0,0,1" --effective-reps "2,2,1" --rest 15
     #[command(name = "add-cluster")]
     AddCluster {
         workout_exercise_id: Option<String>,
@@ -385,6 +399,9 @@ pub enum SetAction {
         /// Side for unilateral training (left, right, both)
         #[arg(long, value_parser = ["left", "right", "both"])]
         side: Option<String>,
+        /// Rep phase: full | eccentric | concentric (required)
+        #[arg(long, value_parser = parse_phase)]
+        phase: String,
         /// Show what would be added (no changes)
         #[arg(long)]
         dry_run: bool,
@@ -412,12 +429,15 @@ pub enum SetAction {
         duration: Option<i32>,
         #[arg(short, long)]
         notes: Option<String>,
+        /// Rep phase: full | eccentric | concentric (required when logging the first set)
+        #[arg(long, value_parser = parse_phase)]
+        phase: Option<String>,
         /// Show what would be added (no changes)
         #[arg(long)]
         dry_run: bool,
     },
-    /// Update any field on an existing set (reps, weight, notes, rir, side, etc.).
-    /// Example: repslog set update 287 --reps 10 --weight 82 --external-load 5 --notes "Left leg" --side left
+    /// Update any field on an existing set (reps, weight, notes, rir, side, phase, etc.).
+    /// Example: repslog set update 287 --reps 10 --weight 82 --phase full --external-load 5 --notes "Left leg" --side left
     Update {
         set_id: String,
         #[arg(short, long)]
@@ -449,6 +469,9 @@ pub enum SetAction {
         /// Side: left | right | both
         #[arg(long, value_parser = ["left", "right", "both"])]
         side: Option<String>,
+        /// Rep phase: full | eccentric | concentric
+        #[arg(long, value_parser = parse_phase)]
+        phase: Option<String>,
         /// Show what would be updated (no changes)
         #[arg(long)]
         dry_run: bool,
@@ -476,7 +499,7 @@ pub enum SetAction {
     },
     /// Add matching left + right (or both) sets in one go for unilateral work.
     /// reps (and optional rir/effective-reps) are provided as comma lists, like add-cluster.
-    /// Example: repslog set add-unilateral 83 --reps "8,10,10,10" --weight 82 --side both
+    /// Example: repslog set add-unilateral 83 --reps "8,10,10,10" --weight 82 --phase full --side both
     #[command(name = "add-unilateral")]
     AddUnilateral {
         workout_exercise_id: Option<String>,
@@ -506,6 +529,9 @@ pub enum SetAction {
         /// left | right | both (both creates a left+right pair for each rep value)
         #[arg(long, value_parser = ["left", "right", "both"], default_value = "both")]
         side: String,
+        /// Rep phase: full | eccentric | concentric (required)
+        #[arg(long, value_parser = parse_phase)]
+        phase: String,
         /// Show what would be added (no changes)
         #[arg(long)]
         dry_run: bool,

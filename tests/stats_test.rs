@@ -1,3 +1,6 @@
+mod common;
+
+use common::add_strength_set;
 use repslog::db::setup_test_db;
 use repslog::repository::Repository;
 use sqlx::Row;
@@ -29,58 +32,38 @@ async fn test_stats_prs() {
         .await
         .unwrap();
 
-    // Max weight set
-    repo.add_set(
+    add_strength_set(
+        &repo,
         we_id,
         1,
         Some(10),
         Some(100.0),
-        None,
-        None,
-        None,
         Some(9.0),
         None,
         None,
         None,
         None,
         None,
-        None, // side
         None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        false,
+        repslog::phase::FULL,
     )
-    .await
-    .unwrap();
-    // Max reps set (different weight)
-    repo.add_set(
+    .await;
+    add_strength_set(
+        &repo,
         we_id,
         2,
         Some(15),
         Some(80.0),
-        None,
-        None,
-        None,
         Some(8.0),
         None,
         None,
         None,
         None,
         None,
-        None, // side
         None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        false,
+        repslog::phase::FULL,
     )
-    .await
-    .unwrap();
+    .await;
 
     let query = "SELECT e.name, MAX(es.weight_kg) as max_weight, MAX(es.reps) as max_reps FROM exercise_sets es JOIN workout_exercises we ON es.workout_exercise_id = we.id JOIN exercises e ON we.exercise_id = e.id GROUP BY e.name";
     let res = sqlx::query(&query).fetch_one(&repo.pool).await.unwrap();
@@ -117,8 +100,8 @@ async fn test_stats_volume() {
         .await
         .unwrap();
 
-    // Volume: 10 * 10.0 = 100.0
-    repo.add_set(
+    add_strength_set(
+        &repo,
         we_id,
         1,
         Some(10),
@@ -130,21 +113,11 @@ async fn test_stats_volume() {
         None,
         None,
         None,
-        None,
-        None, // side
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        false,
+        repslog::phase::FULL,
     )
-    .await
-    .unwrap();
-    // Volume: 12 * 10.0 = 120.0
-    repo.add_set(
+    .await;
+    add_strength_set(
+        &repo,
         we_id,
         2,
         Some(12),
@@ -156,19 +129,9 @@ async fn test_stats_volume() {
         None,
         None,
         None,
-        None,
-        None, // side
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        false,
+        repslog::phase::FULL,
     )
-    .await
-    .unwrap();
+    .await;
 
     let query = "SELECT e.name, SUM(es.weight_kg * es.reps) as total_volume FROM exercise_sets es JOIN workout_exercises we ON es.workout_exercise_id = we.id JOIN exercises e ON we.exercise_id = e.id GROUP BY e.name";
     let res = sqlx::query(&query).fetch_one(&repo.pool).await.unwrap();
@@ -204,7 +167,8 @@ async fn test_stats_volume_with_null_weight_returns_real() {
         .await
         .unwrap();
 
-    repo.add_set(
+    add_strength_set(
+        &repo,
         we_id,
         1,
         Some(10),
@@ -216,19 +180,9 @@ async fn test_stats_volume_with_null_weight_returns_real() {
         None,
         None,
         None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        false,
+        repslog::phase::FULL,
     )
-    .await
-    .unwrap();
+    .await;
 
     let query = "SELECT e.name, \
         SUM(CASE \
@@ -279,7 +233,8 @@ async fn test_stats_history_lists_each_set_in_date_range() {
         .await
         .unwrap();
 
-    repo.add_set(
+    add_strength_set(
+        &repo,
         recent_we,
         1,
         Some(10),
@@ -291,20 +246,11 @@ async fn test_stats_history_lists_each_set_in_date_range() {
         None,
         None,
         None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        false,
+        repslog::phase::FULL,
     )
-    .await
-    .unwrap();
-    repo.add_set(
+    .await;
+    add_strength_set(
+        &repo,
         recent_we,
         2,
         Some(8),
@@ -316,19 +262,9 @@ async fn test_stats_history_lists_each_set_in_date_range() {
         None,
         None,
         None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        false,
+        repslog::phase::FULL,
     )
-    .await
-    .unwrap();
+    .await;
 
     let old_w = repo
         .create_workout(
@@ -343,7 +279,8 @@ async fn test_stats_history_lists_each_set_in_date_range() {
         .add_workout_exercise(old_w, ex_id, 1, None, None, false)
         .await
         .unwrap();
-    repo.add_set(
+    add_strength_set(
+        &repo,
         old_we,
         1,
         Some(20),
@@ -355,19 +292,9 @@ async fn test_stats_history_lists_each_set_in_date_range() {
         None,
         None,
         None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        false,
+        repslog::phase::FULL,
     )
-    .await
-    .unwrap();
+    .await;
 
     let query = "SELECT w.id AS workout_id, es.set_number, es.reps \
                   FROM exercise_sets es \
@@ -438,7 +365,8 @@ async fn test_stats_history_exact_name_avoids_substring_overlap() {
         .add_workout_exercise(w_id, dip_id, 1, None, None, false)
         .await
         .unwrap();
-    repo.add_set(
+    add_strength_set(
+        &repo,
         dip_we,
         1,
         Some(5),
@@ -450,25 +378,16 @@ async fn test_stats_history_exact_name_avoids_substring_overlap() {
         None,
         None,
         None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        false,
+        repslog::phase::FULL,
     )
-    .await
-    .unwrap();
+    .await;
 
     let ring_we = repo
         .add_workout_exercise(w_id, ring_dip_id, 2, None, None, false)
         .await
         .unwrap();
-    repo.add_set(
+    add_strength_set(
+        &repo,
         ring_we,
         1,
         Some(8),
@@ -480,19 +399,9 @@ async fn test_stats_history_exact_name_avoids_substring_overlap() {
         None,
         None,
         None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        false,
+        repslog::phase::FULL,
     )
-    .await
-    .unwrap();
+    .await;
 
     let query = "SELECT e.name \
                  FROM exercise_sets es \
@@ -501,7 +410,11 @@ async fn test_stats_history_exact_name_avoids_substring_overlap() {
                  JOIN workouts w ON we.workout_id = w.id \
                  WHERE e.name = ? AND w.started_at >= date('now', '-30 days')";
 
-    let dip_name = repo.require_exercise_by_id_or_name("dip").await.unwrap().name;
+    let dip_name = repo
+        .require_exercise_by_id_or_name("dip")
+        .await
+        .unwrap()
+        .name;
     let dip_res = sqlx::query(query)
         .bind(&dip_name)
         .fetch_all(&repo.pool)

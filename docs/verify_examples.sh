@@ -71,25 +71,26 @@ echo "Created Workout-Exercise ID: $WE_ID"
 
 echo "Testing: repslog workout-exercise add --goal-reps"
 GOAL_WE=$($REPSLOG workout-exercise add $WORKOUT_ID "Pullups" --goal-reps 30)
-$REPSLOG set add $GOAL_WE --reps 10 --weight 82 --rir 1.0
-$REPSLOG set add $GOAL_WE --reps 8 --weight 82 --rir 0.5
+$REPSLOG set add $GOAL_WE --reps 10 --weight 82 --phase full --rir 1.0
+$REPSLOG set add $GOAL_WE --reps 8 --weight 82 --phase full --rir 0.5
 
 echo "Testing: repslog workout-exercise list --json"
 $REPSLOG workout-exercise list $WORKOUT_ID --json > /dev/null
 
 # 4. Logging Sets
 echo "Testing: repslog set add"
-$REPSLOG set add $WE_ID --reps 10 --weight 100 --rir 1.0 --effective-reps 5
+$REPSLOG set add $WE_ID --reps 10 --weight 100 --phase full --rir 1.0 --effective-reps 5
 
 echo "Testing: repslog set add --duration (static holds)"
 HOLD_WE=$($REPSLOG workout-exercise add $WORKOUT_ID "Plank")
-$REPSLOG set add $HOLD_WE --duration 60 --weight 82 --notes "Wall sit hold"
-$REPSLOG set add $HOLD_WE --duration 45 --weight 82 --notes "Second hold"
+$REPSLOG set add $HOLD_WE --duration 60 --weight 82 --phase full --notes "Wall sit hold"
+$REPSLOG set add $HOLD_WE --duration 45 --weight 82 --phase full --notes "Second hold"
 
 echo "Testing: repslog set add-cluster"
 $REPSLOG set add-cluster $WE_ID \
   --reps "10,5,5" \
   --weight 100 \
+  --phase full \
   --rir "0,0,1" \
   --effective-reps "6,4,3" \
   --rest 15
@@ -98,6 +99,7 @@ echo "Testing: repslog set add-cardio"
 # Need to add Running exercise first or use the default if it exists
 RUN_WE_ID=$($REPSLOG workout-exercise add $WORKOUT_ID "Running")
 $REPSLOG set add-cardio $RUN_WE_ID \
+  --phase full \
   --distance 5 \
   --duration 1500 \
   --avg-heart-rate 150 \
@@ -112,8 +114,8 @@ $REPSLOG set list $WE_ID --json > /dev/null
 # Unilateral / side + corrections (new in unilateral improvement)
 echo "Testing: repslog set add with --side (unilateral)"
 SPLIT_WE=$($REPSLOG workout-exercise add $WORKOUT_ID "bulgarian split squat")
-$REPSLOG set add $SPLIT_WE --reps 8 --weight 20 --side left
-$REPSLOG set add $SPLIT_WE --reps 8 --weight 20 --side right
+$REPSLOG set add $SPLIT_WE --reps 8 --weight 20 --phase full --side left
+$REPSLOG set add $SPLIT_WE --reps 8 --weight 20 --phase full --side right
 
 echo "Testing: repslog set update + side change + notes"
 # Take the first set ID from list (json) for the split
@@ -188,7 +190,7 @@ print("  json create id:", obj["id"])
 
 echo "Testing: piping workout-exercise add to set add (stdin supported)"
 WE_ID=$($REPSLOG workout-exercise add 1 "Dips")
-echo "$WE_ID" | $REPSLOG set add --reps 10 --weight 82 --rir 0 > /dev/null
+echo "$WE_ID" | $REPSLOG set add --reps 10 --weight 82 --phase full --rir 0 > /dev/null
 
 echo "Cleanup: Removing temporary directory $TMP_DIR"
 rm -rf "$TMP_DIR"

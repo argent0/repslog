@@ -10,7 +10,7 @@ To log a standard set, use the `set add` command with a Workout-Exercise ID (`WE
 
 ```bash
 # Barbell: 10 reps at 100 kg with 1 RIR and 5 effective reps
-repslog set add <WE_ID> --reps 10 --weight 100 --rir 1.0 --effective-reps 5
+repslog set add <WE_ID> --reps 10 --weight 100 --phase full --rir 1.0 --effective-reps 5
 ```
 
 ### Parameters
@@ -23,6 +23,7 @@ repslog set add <WE_ID> --reps 10 --weight 100 --rir 1.0 --effective-reps 5
 - `--effective-reps <INT>`: Number of stimulating reps.
 - `--rpe <FLOAT>`: Rate of Perceived Exertion (1-10).
 - `--side <left|right|both>`: Side for unilateral sets (see [Unilateral / Side Tracking](#unilateral--side-tracking)).
+- `--phase <full|eccentric|concentric>`: Rep phase (**required** on every new set). Use `eccentric` for lowering-only reps (e.g. assisted pistol negatives); `concentric` for lifting-only work.
 - `--notes <TEXT>`: Optional notes for the set.
 
 ## Bodyweight & Calisthenics
@@ -33,13 +34,16 @@ For exercises with `load_type=body_mass` (pull-ups, ring dips, etc.), `--weight`
 WE=$(repslog workout-exercise add <WORKOUT_ID> "pull up")
 
 # Unweighted pull-ups at 82 kg body mass
-repslog set add $WE --reps 8 --weight 82 --rir 1.0
+repslog set add $WE --reps 8 --weight 82 --phase full --rir 1.0
 
 # Weighted vest: body mass + external load
-repslog set add $WE --reps 5 --weight 82 --external-load 10
+repslog set add $WE --reps 5 --weight 82 --phase full --external-load 10
 
 # Band-assisted dips: negative external load
-repslog set add $WE --reps 6 --weight 82 --external-load -15 --notes "green band"
+repslog set add $WE --reps 6 --weight 82 --phase full --external-load -15 --notes "green band"
+
+# Eccentric-only pistol squat negatives
+repslog set add $WE --reps 3 --weight 82 --phase eccentric
 ```
 
 > **Important:** Omitting body weight on calisthenics sets makes them invisible to `stats volume` and `stats weight`. The CLI requires `--weight <kg>` unless you explicitly pass `--no-weight-recorded` (discouraged; prints a warning).
@@ -52,8 +56,8 @@ For isometric holds and timed exercises, use `--duration` instead of `--reps`. B
 
 ```bash
 WE=$(repslog workout-exercise add <WORKOUT_ID> "wall sit")
-repslog set add $WE --duration 60 --weight 82 --notes "Wall sit hold"
-repslog set add $WE --duration 45 --weight 82 --notes "Second hold"
+repslog set add $WE --duration 60 --weight 82 --phase full --notes "Wall sit hold"
+repslog set add $WE --duration 45 --weight 82 --phase full --notes "Second hold"
 ```
 
 Use `--type "Static Holds"` on `workout create` for session-level filtering. `workout view` displays duration-based sets in the Details column.
@@ -67,6 +71,7 @@ For advanced hypertrophy training, you can log multiple "mini-sets" in a single 
 repslog set add-cluster <WE_ID> \
   --reps "10,5,5" \
   --weight 100 \
+  --phase full \
   --rir "0,0,1" \
   --effective-reps "6,4,3" \
   --rest 15
@@ -80,6 +85,7 @@ Cardio sets support detailed metrics compatible with smart watch exports (like S
 
 ```bash
 repslog set add-cardio <WE_ID> \
+  --phase full \
   --distance 7.98 \
   --duration 2701 \
   --avg-heart-rate 154 \
@@ -109,7 +115,7 @@ Add an exercise to a workout. When you supply `--reps`, `--duration`, or `--weig
 repslog set quick <WORKOUT_ID> "pull up"
 
 # Add exercise + first bodyweight set
-repslog set quick <WORKOUT_ID> "pull up" --reps 8 --weight 82 --rir 1.0
+repslog set quick <WORKOUT_ID> "pull up" --reps 8 --weight 82 --phase full --rir 1.0
 ```
 
 For bodyweight exercises, `--weight` (body mass) is required when logging a set via `set quick`.
@@ -127,12 +133,12 @@ repslog set list <WE_ID>
 Mistakes happen (especially during unilateral sessions). Use these commands to fix without deleting the whole workout.
 
 ```bash
-repslog set update 287 --reps 10 --weight 82 --external-load 5 --notes "Left leg" --side left
+repslog set update 287 --reps 10 --weight 82 --phase full --external-load 5 --notes "Left leg" --side left
 repslog set move 287 --to 1
 repslog set delete 287 --force   # --force skips the confirmation prompt
 ```
 
-- `set update` accepts any combination of fields (reps, weight, rir, notes, side, rest, etc.).
+- `set update` accepts any combination of fields (reps, weight, phase, rir, notes, side, rest, etc.).
 - `set delete` asks for confirmation in interactive terminals unless `--force`.
 - `set move` reorders within the workout-exercise (renumbers cleanly 1..N).
 
@@ -141,8 +147,8 @@ repslog set delete 287 --force   # --force skips the confirmation prompt
 Add `--side left|right|both` when logging.
 
 ```bash
-repslog set add 84 --reps 6 --weight 82 --side left
-repslog set add 84 --reps 6 --weight 82 --side right
+repslog set add 84 --reps 6 --weight 82 --phase full --side left
+repslog set add 84 --reps 6 --weight 82 --phase full --side right
 ```
 
 `workout view` will show a Side column, list sets in logical order (left before right), and print per-side rep totals when sides are present.
@@ -150,7 +156,7 @@ repslog set add 84 --reps 6 --weight 82 --side right
 For quick symmetric work:
 
 ```bash
-repslog set add-unilateral 83 --reps "8,10,10,10" --weight 82 --side both
+repslog set add-unilateral 83 --reps "8,10,10,10" --weight 82 --phase full --side both
 ```
 
 This creates left+right pairs (or all left / all right if you specify).
@@ -159,8 +165,8 @@ Weight-only sets (no reps) are supported for load tracking / progressive overloa
 
 ```bash
 # Barbell: log working weight before reps
-repslog set add 99 --weight 100
+repslog set add 99 --weight 100 --phase full
 
 # Bodyweight: log body mass (required)
-repslog set add 99 --weight 82
+repslog set add 99 --weight 82 --phase full
 ```

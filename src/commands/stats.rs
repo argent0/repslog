@@ -167,7 +167,7 @@ pub async fn handle_stats(action: StatsAction, repo: &Repository, json: bool) ->
         StatsAction::History { exercise, days } => {
             let exercise_name = repo.require_exercise_by_id_or_name(&exercise).await?.name;
             let query = "SELECT w.id AS workout_id, w.started_at, w.workout_type, e.name AS exercise_name, e.load_type AS exercise_load_type, \
-                         es.set_number, es.reps, es.weight_kg, es.external_load_kg, es.duration_seconds, es.side, es.rir, \
+                         es.set_number, es.reps, es.weight_kg, es.external_load_kg, es.duration_seconds, es.side, es.phase, es.rir, \
                          es.effective_reps, es.notes \
                          FROM exercise_sets es \
                          JOIN workout_exercises we ON es.workout_exercise_id = we.id \
@@ -194,6 +194,7 @@ pub async fn handle_stats(action: StatsAction, repo: &Repository, json: bool) ->
                 external_load_kg: Option<f64>,
                 duration_seconds: Option<i32>,
                 side: Option<String>,
+                phase: String,
                 rir: Option<f64>,
                 effective_reps: Option<i32>,
                 notes: Option<String>,
@@ -212,6 +213,7 @@ pub async fn handle_stats(action: StatsAction, repo: &Repository, json: bool) ->
                     external_load_kg: r.get("external_load_kg"),
                     duration_seconds: r.get("duration_seconds"),
                     side: r.get("side"),
+                    phase: r.get("phase"),
                     rir: r.get("rir"),
                     effective_reps: r.get("effective_reps"),
                     notes: r.get("notes"),
@@ -220,15 +222,20 @@ pub async fn handle_stats(action: StatsAction, repo: &Repository, json: bool) ->
             if json {
                 print_json(&entries)?;
             } else {
-                println!(
-                    "Set history for '{}' (last {} days):",
-                    exercise_name, days
-                );
+                println!("Set history for '{}' (last {} days):", exercise_name, days);
                 if entries.is_empty() {
                     println!("No sets found in this period.");
                 } else {
                     let mut rows = Vec::new();
                     for e in &entries {
+                        let phase_label = {
+                            let label = crate::phase::format_phase_label(&e.phase);
+                            if label.is_empty() {
+                                "full".to_string()
+                            } else {
+                                label
+                            }
+                        };
                         rows.push(vec![
                             e.date.clone(),
                             e.workout_id.to_string(),
@@ -244,11 +251,14 @@ pub async fn handle_stats(action: StatsAction, repo: &Repository, json: bool) ->
                                 e.external_load_kg,
                             ),
                             e.side.clone().unwrap_or_default(),
+                            phase_label,
                             e.notes.clone().unwrap_or_default(),
                         ]);
                     }
                     print_table(
-                        vec!["Date", "Workout", "Set", "Reps", "Weight", "Side", "Notes"],
+                        vec![
+                            "Date", "Workout", "Set", "Reps", "Weight", "Side", "Phase", "Notes",
+                        ],
                         rows,
                     );
                 }

@@ -6,6 +6,7 @@ pub mod db;
 pub mod error;
 pub mod load_type;
 pub mod models;
+pub mod phase;
 pub mod repository;
 pub mod utils;
 

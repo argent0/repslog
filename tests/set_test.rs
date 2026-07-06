@@ -1,3 +1,6 @@
+mod common;
+
+use common::add_strength_set;
 use repslog::db::setup_test_db;
 use repslog::repository::Repository;
 
@@ -18,7 +21,8 @@ async fn test_set_numbering() {
 
     let set1_num = repo.get_next_set_number(we_id).await.unwrap();
     assert_eq!(set1_num, 1);
-    repo.add_set(
+    add_strength_set(
+        &repo,
         we_id,
         set1_num,
         Some(10),
@@ -30,23 +34,14 @@ async fn test_set_numbering() {
         None,
         None,
         None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None, // side
-        None,
-        None,
-        None,
-        false,
+        repslog::phase::FULL,
     )
-    .await
-    .unwrap();
+    .await;
 
     let set2_num = repo.get_next_set_number(we_id).await.unwrap();
     assert_eq!(set2_num, 2);
-    repo.add_set(
+    add_strength_set(
+        &repo,
         we_id,
         set2_num,
         Some(12),
@@ -58,19 +53,9 @@ async fn test_set_numbering() {
         None,
         None,
         None,
-        None,
-        None,
-        None,
-        None,
-        None, // side
-        None,
-        None,
-        None,
-        None,
-        false,
+        repslog::phase::FULL,
     )
-    .await
-    .unwrap();
+    .await;
 }
 
 #[tokio::test]
@@ -93,7 +78,6 @@ async fn test_set_quick_logic() {
         .unwrap();
     let w_id = repo.create_workout(None, None, None, false).await.unwrap();
 
-    // Replicating Quick logic from handle_set
     let exercise = repo
         .find_exercise_by_id_or_name("Pullups")
         .await
@@ -104,13 +88,22 @@ async fn test_set_quick_logic() {
         .add_workout_exercise(w_id, exercise.id, order, None, None, false)
         .await
         .unwrap();
-    repo.add_set(
-        we_id, 1, None, None, None, None, None, None, None, None, None, None, None, None,
-        None, // side
-        None, None, None, None, None, false,
+    add_strength_set(
+        &repo,
+        we_id,
+        1,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        repslog::phase::FULL,
     )
-    .await
-    .unwrap();
+    .await;
 
     let sets = repo.list_sets(we_id).await.unwrap();
     assert_eq!(sets.len(), 1);
@@ -144,59 +137,38 @@ async fn test_side_and_unilateral_ordering() {
         .await
         .unwrap();
 
-    // Add right first, then left — list_sets should return left before right due to side-aware ORDER BY
-    let _r1 = repo
-        .add_set(
-            we_id,
-            1,
-            Some(8),
-            Some(20.0),
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            Some("right"),
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            false,
-        )
-        .await
-        .unwrap();
-    let l1 = repo
-        .add_set(
-            we_id,
-            2,
-            Some(8),
-            Some(20.0),
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            Some("left"),
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            false,
-        )
-        .await
-        .unwrap();
+    let _r1 = add_strength_set(
+        &repo,
+        we_id,
+        1,
+        Some(8),
+        Some(20.0),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        Some("right"),
+        repslog::phase::FULL,
+    )
+    .await;
+    let l1 = add_strength_set(
+        &repo,
+        we_id,
+        2,
+        Some(8),
+        Some(20.0),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        Some("left"),
+        repslog::phase::FULL,
+    )
+    .await;
 
     let sets = repo.list_sets(we_id).await.unwrap();
     assert_eq!(sets.len(), 2);
@@ -229,34 +201,23 @@ async fn test_set_update_and_weight_only() {
         .await
         .unwrap();
 
-    let sid = repo
-        .add_set(
-            we_id,
-            1,
-            Some(6),
-            Some(18.0),
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            false,
-        )
-        .await
-        .unwrap();
+    let sid = add_strength_set(
+        &repo,
+        we_id,
+        1,
+        Some(6),
+        Some(18.0),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        repslog::phase::FULL,
+    )
+    .await;
 
-    // Weight-only should now be accepted at handler level; here we test repo + update
     repo.update_set(
         sid,
         None,
@@ -271,6 +232,7 @@ async fn test_set_update_and_weight_only() {
         None,
         Some("Left leg only"),
         Some("left"),
+        None,
         false,
     )
     .await
@@ -280,6 +242,51 @@ async fn test_set_update_and_weight_only() {
     assert_eq!(s.weight_kg, Some(20.0));
     assert_eq!(s.side, Some("left".to_string()));
     assert_eq!(s.notes, Some("Left leg only".to_string()));
+}
+
+#[tokio::test]
+async fn test_phase_eccentric_set() {
+    let pool = setup_test_db().await.unwrap();
+    let repo = Repository::new(pool);
+
+    let ex_id = repo
+        .add_exercise(
+            "Pistol Squat",
+            "calisthenics",
+            None,
+            None,
+            "body_mass",
+            None,
+            false,
+            false,
+        )
+        .await
+        .unwrap();
+    let w_id = repo.create_workout(None, None, None, false).await.unwrap();
+    let we_id = repo
+        .add_workout_exercise(w_id, ex_id, 1, None, None, false)
+        .await
+        .unwrap();
+
+    let sid = add_strength_set(
+        &repo,
+        we_id,
+        1,
+        Some(3),
+        Some(82.0),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        repslog::phase::ECCENTRIC,
+    )
+    .await;
+
+    let s = repo.get_set(sid).await.unwrap().unwrap();
+    assert_eq!(s.phase, repslog::phase::ECCENTRIC);
 }
 
 #[tokio::test]
@@ -299,91 +306,59 @@ async fn test_set_delete_and_reorder() {
         .await
         .unwrap();
 
-    let s1 = repo
-        .add_set(
-            we_id,
-            1,
-            Some(10),
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            false,
-        )
-        .await
-        .unwrap();
-    let s2 = repo
-        .add_set(
-            we_id,
-            2,
-            Some(10),
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            false,
-        )
-        .await
-        .unwrap();
-    let s3 = repo
-        .add_set(
-            we_id,
-            3,
-            Some(10),
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            false,
-        )
-        .await
-        .unwrap();
+    let s1 = add_strength_set(
+        &repo,
+        we_id,
+        1,
+        Some(10),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        repslog::phase::FULL,
+    )
+    .await;
+    let s2 = add_strength_set(
+        &repo,
+        we_id,
+        2,
+        Some(10),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        repslog::phase::FULL,
+    )
+    .await;
+    let s3 = add_strength_set(
+        &repo,
+        we_id,
+        3,
+        Some(10),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        repslog::phase::FULL,
+    )
+    .await;
 
-    // Delete middle
     repo.delete_set(s2, false).await.unwrap();
     let remaining = repo.list_sets(we_id).await.unwrap();
     assert_eq!(remaining.len(), 2);
 
-    // Reorder: move last (s3) to position 1 -> should become set_number 1, old s1 becomes 2
     repo.reorder_set(s3, 1, false).await.unwrap();
     let after = repo.list_sets(we_id).await.unwrap();
     assert_eq!(after[0].id, s3);

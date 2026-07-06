@@ -332,6 +332,7 @@ impl Repository {
         rest_seconds: Option<i32>,
         notes: Option<&str>,
         side: Option<&str>,
+        phase: &str,
         avg_heart_rate: Option<f64>,
         max_heart_rate: Option<f64>,
         hr_zones: Option<Json<HeartRateZones>>,
@@ -345,9 +346,9 @@ impl Repository {
         }
         let res = sqlx::query("INSERT INTO exercise_sets (
             workout_exercise_id, set_number, reps, weight_kg, external_load_kg, duration_seconds, distance_km, rpe, rir, 
-            effective_reps, cluster_id, rest_seconds, notes, side, avg_heart_rate_bpm, max_heart_rate_bpm, 
+            effective_reps, cluster_id, rest_seconds, notes, side, phase, avg_heart_rate_bpm, max_heart_rate_bpm, 
             heart_rate_zones, avg_pace_min_per_km, calories_burned, laps
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
             .bind(workout_exercise_id)
             .bind(set_number)
             .bind(reps)
@@ -362,6 +363,7 @@ impl Repository {
             .bind(rest_seconds)
             .bind(notes)
             .bind(side)
+            .bind(phase)
             .bind(avg_heart_rate)
             .bind(max_heart_rate)
             .bind(hr_zones)
@@ -446,6 +448,7 @@ impl Repository {
         rest_seconds: Option<i32>,
         notes: Option<&str>,
         side: Option<&str>,
+        phase: Option<&str>,
         dry_run: bool,
     ) -> Result<()> {
         if dry_run {
@@ -463,7 +466,8 @@ impl Repository {
              effective_reps = COALESCE(?, effective_reps), \
              rest_seconds = COALESCE(?, rest_seconds), \
              notes = COALESCE(?, notes), \
-             side = COALESCE(?, side) \
+             side = COALESCE(?, side), \
+             phase = COALESCE(?, phase) \
              WHERE id = ?",
         )
         .bind(reps)
@@ -479,6 +483,7 @@ impl Repository {
         .bind(rest_seconds)
         .bind(notes)
         .bind(side)
+        .bind(phase)
         .bind(id)
         .execute(&self.pool)
         .await?;

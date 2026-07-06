@@ -17,7 +17,7 @@ In this example:
 
 ### Example: Add Exercise and Log a Set (direct piping)
 ```bash
-repslog workout-exercise add 1 "Squat (Barbell)" | repslog set add --reps 10 --weight 100 --rir 1
+repslog workout-exercise add 1 "Squat (Barbell)" | repslog set add --reps 10 --weight 100 --phase full --rir 1
 ```
 
 In this example:
@@ -30,7 +30,7 @@ You can use standard shell tools like `xargs` or simple loops to batch log data.
 
 ```bash
 # Log 3 identical sets
-echo "10" | xargs -I {} repslog set add <WE_ID> --reps {} --weight 60 --rir 2
+echo "10" | xargs -I {} repslog set add <WE_ID> --reps {} --weight 60 --phase full --rir 2
 ```
 
 ## JSON Support
@@ -39,7 +39,7 @@ Some flags, like `--hr-zones` and `--laps` in `set add-cardio`, require JSON str
 
 ```bash
 ZONES=$(jq -n --arg z2 1800 '{"z2_seconds": ($z2|tonumber)}')
-repslog set add-cardio <WE_ID> --distance 5 --duration 1500 --hr-zones "$ZONES"
+repslog set add-cardio <WE_ID> --phase full --distance 5 --duration 1500 --hr-zones "$ZONES"
 ```
 
 ## JSON Output with --json

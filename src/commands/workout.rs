@@ -360,7 +360,7 @@ pub async fn handle_workout(action: WorkoutAction, repo: &Repository, json: bool
 
                             let mut details = Vec::new();
                             if let Some(reps) = s.reps {
-                                details.push(format!("{} reps", reps));
+                                details.push(crate::phase::format_reps_with_phase(reps, &s.phase));
                             }
                             let load = crate::bodyweight::format_load_display(
                                 &load_type,
@@ -405,9 +405,18 @@ pub async fn handle_workout(action: WorkoutAction, repo: &Repository, json: bool
                                 .as_ref()
                                 .map(|sd| sd.to_uppercase())
                                 .unwrap_or_else(|| "-".to_string());
+                            let phase_label = {
+                                let label = crate::phase::format_phase_label(&s.phase);
+                                if label.is_empty() {
+                                    "full".to_string()
+                                } else {
+                                    label
+                                }
+                            };
                             set_rows.push(vec![
                                 s.set_number.to_string() + &cluster_label,
                                 side_label,
+                                phase_label,
                                 details.join(" • "),
                                 cardio_info.dimmed().to_string(),
                                 s.notes.as_ref().cloned().unwrap_or_default(),
@@ -439,7 +448,7 @@ pub async fn handle_workout(action: WorkoutAction, repo: &Repository, json: bool
                         }
 
                         print_table(
-                            vec!["Set #", "Side", "Details", "Cardio", "Notes"],
+                            vec!["Set #", "Side", "Phase", "Details", "Cardio", "Notes"],
                             set_rows,
                         );
                     }

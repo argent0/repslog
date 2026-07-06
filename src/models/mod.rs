@@ -80,6 +80,7 @@ pub struct ExerciseSet {
     pub rest_seconds: Option<i32>,
     pub notes: Option<String>,
     pub side: Option<String>,
+    pub phase: String,
     pub extra_metrics: Option<String>,
     pub avg_heart_rate_bpm: Option<f64>,
     pub max_heart_rate_bpm: Option<f64>,
