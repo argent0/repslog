@@ -18,6 +18,7 @@ async fn test_exercise_add_rejects_uppercase() {
             load_type: None,
             muscles: None,
             description: None,
+            allow_phase_in_name: false,
             dry_run: false,
         },
         &repo,
@@ -28,6 +29,64 @@ async fn test_exercise_add_rejects_uppercase() {
 
     assert!(matches!(err, RepslogError::Cli(_)));
     assert!(err.to_string().contains("lowercase"));
+}
+
+#[tokio::test]
+async fn test_exercise_add_rejects_phase_in_name() {
+    let pool = setup_test_db().await.unwrap();
+    handle_init(&pool, false, false).await.unwrap();
+    let repo = Repository::new(pool);
+
+    let err = handle_exercise(
+        ExerciseAction::Add {
+            name: "pistol squat (eccentric only)".to_string(),
+            category: "calisthenics".to_string(),
+            equipment: None,
+            load_type: Some("body_mass".to_string()),
+            muscles: None,
+            description: None,
+            allow_phase_in_name: false,
+            dry_run: false,
+        },
+        &repo,
+        false,
+    )
+    .await
+    .unwrap_err();
+
+    assert!(err.to_string().contains("rep phase"));
+    assert!(err.to_string().contains("--allow-phase-in-name"));
+}
+
+#[tokio::test]
+async fn test_exercise_add_allows_phase_in_name_with_flag() {
+    let pool = setup_test_db().await.unwrap();
+    handle_init(&pool, false, false).await.unwrap();
+    let repo = Repository::new(pool);
+
+    handle_exercise(
+        ExerciseAction::Add {
+            name: "pistol squat (eccentric only)".to_string(),
+            category: "calisthenics".to_string(),
+            equipment: None,
+            load_type: Some("body_mass".to_string()),
+            muscles: None,
+            description: None,
+            allow_phase_in_name: true,
+            dry_run: false,
+        },
+        &repo,
+        false,
+    )
+    .await
+    .unwrap();
+
+    let ex = repo
+        .find_exercise_by_id_or_name("pistol squat (eccentric only)")
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(ex.name, "pistol squat (eccentric only)");
 }
 
 #[tokio::test]
@@ -44,6 +103,7 @@ async fn test_exercise_add_rejects_near_duplicate_of_seeded() {
             load_type: None,
             muscles: None,
             description: None,
+            allow_phase_in_name: false,
             dry_run: false,
         },
         &repo,
@@ -83,6 +143,7 @@ async fn test_exercise_add_warns_on_similar_name() {
             load_type: None,
             muscles: None,
             description: None,
+            allow_phase_in_name: false,
             dry_run: false,
         },
         &repo,
@@ -109,6 +170,7 @@ async fn test_exercise_add_warns_on_plural_name() {
             load_type: None,
             muscles: None,
             description: None,
+            allow_phase_in_name: false,
             dry_run: false,
         },
         &repo,
@@ -139,6 +201,7 @@ async fn test_exercise_add_stores_normalized_lowercase() {
             load_type: None,
             muscles: None,
             description: None,
+            allow_phase_in_name: false,
             dry_run: false,
         },
         &repo,

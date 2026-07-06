@@ -1,6 +1,7 @@
 use crate::cli::ExerciseAction;
 use crate::error::{RepslogError, Result};
 use crate::load_type::{self, normalize_load_type};
+use crate::phase::validate_exercise_name_phase;
 use crate::repository::Repository;
 use crate::utils::{
     find_exercise_name_conflicts, format_datetime_opt, format_dry_run_id, normalize_exercise_name,
@@ -71,9 +72,11 @@ pub async fn handle_exercise(action: ExerciseAction, repo: &Repository, json: bo
             load_type,
             muscles,
             description,
+            allow_phase_in_name,
             dry_run,
         } => {
             let name = normalize_exercise_name(&name)?;
+            validate_exercise_name_phase(&name, allow_phase_in_name)?;
             if let Some(singular) = suggest_singular_exercise_name(&name) {
                 eprintln!(
                     "Warning: Prefer singular exercise names (e.g. '{}' instead of '{}').",

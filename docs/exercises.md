@@ -29,7 +29,7 @@ repslog exercise search "Squat"
 You can add custom exercises to fit your training routine.
 
 ```bash
-repslog exercise add "Bulgarian Split Squat" \
+repslog exercise add "bulgarian split squat" \
   --category strength \
   --equipment dumbbell \
   --load-type external \
@@ -46,6 +46,29 @@ repslog exercise add "ring dip" \
   --load-type body_mass
 ```
 
+### Rep phase belongs on sets, not exercise names
+
+Sets require `--phase full|eccentric|concentric` when logging (see [logging.md](logging.md)).
+Use **one exercise per movement** and tag individual sets with the appropriate phase.
+
+```bash
+# Good: one pistol squat exercise, phase on each set
+repslog exercise add "pistol squat" --category calisthenics --load-type body_mass
+repslog set add $WE --reps 3 --weight 82 --phase eccentric
+repslog set add $WE --reps 5 --weight 82 --phase full
+```
+
+`exercise add` **rejects** names that embed phase information (e.g. `pistol squat (eccentric only)`, `concentric press`). This keeps history and stats under a single exercise instead of splitting across variants.
+
+To override (legacy imports only):
+
+```bash
+repslog exercise add "pistol squat (eccentric only)" \
+  --category calisthenics \
+  --load-type body_mass \
+  --allow-phase-in-name
+```
+
 Update metadata on an existing exercise:
 
 ```bash
@@ -60,6 +83,7 @@ repslog exercise update "ring dip" --equipment rings --load-type body_mass
 - `--load-type <TYPE>`: How `--weight` is interpreted: `body_mass`, `external`, or `none`. Defaults from category when omitted (`calisthenics` → `body_mass`, `cardio` → `none`, otherwise `external`).
 - `--muscles <MUSCLES>`: A comma-separated list of muscle groups.
 - `--description <DESC>`: A brief explanation of the exercise.
+- `--allow-phase-in-name`: Skip the check that rejects eccentric/concentric in the exercise name (not recommended).
 
 `exercise update` accepts the same optional fields plus `--clear-equipment` to remove apparatus.
 

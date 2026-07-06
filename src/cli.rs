@@ -93,6 +93,8 @@ pub enum ExerciseAction {
     /// Add a custom exercise to the catalog.
     ///
     /// Names must be lowercase and singular (e.g. `pull up`, not `Pull Ups` or `pull ups`).
+    /// Do not embed rep phase in the name (e.g. `pistol squat (eccentric only)`); use `--phase`
+    /// on `set add` instead. Pass `--allow-phase-in-name` only for legacy cleanup.
     /// Search the catalog first to avoid near-duplicates that fragment history and stats.
     ///
     /// Examples:
@@ -118,6 +120,9 @@ pub enum ExerciseAction {
         muscles: Option<String>,
         #[arg(short, long)]
         description: Option<String>,
+        /// Allow eccentric/concentric in the exercise name (not recommended)
+        #[arg(long = "allow-phase-in-name")]
+        allow_phase_in_name: bool,
         /// Show what would be added (no changes)
         #[arg(long)]
         dry_run: bool,
