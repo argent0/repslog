@@ -137,7 +137,7 @@ pub enum ImportAction {
     Fit {
         /// Path to the .fit file
         path: String,
-        /// Override exercise name (default: FIT session.sport, lowercased). Must exist in catalog.
+        /// Override exercise name (default: FIT session.sport). Case-insensitive; must exist in catalog.
         #[arg(long)]
         exercise: Option<String>,
         /// Workout type label (default: Run)

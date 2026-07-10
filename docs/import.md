@@ -51,7 +51,7 @@ repslog import fit path/to/activity.fit
 
 | Flag | Description |
 |------|-------------|
-| `--exercise <NAME>` | Override catalog exercise (default: FIT `session.sport`, lowercased). Must already exist |
+| `--exercise <NAME>` | Override catalog exercise (default: FIT `session.sport`). Case-insensitive; must already exist |
 | `--type <LABEL>` | Workout type (default: `Run`) |
 | `--notes <TEXT>` | Notes (import provenance is appended) |
 | `--force` | Allow re-import of a previously imported file (previous workout is kept; hash lock is cleared) |

@@ -7,7 +7,7 @@ use crate::repository::Repository;
 use crate::sanity::{self, ProposedSetMetrics, ProposedWorkoutMetrics};
 use crate::utils::{
     find_exercise_name_conflicts, format_datetime, format_dry_run_id, format_duration, format_pace,
-    normalize_exercise_name, normalize_exercise_name_lenient, print_id, print_json,
+    normalize_exercise_name_lenient, print_id, print_json,
 };
 use sha2::{Digest, Sha256};
 use sqlx::types::Json;
@@ -296,12 +296,19 @@ async fn import_fit(
 }
 
 /// Resolve catalog exercise name from optional CLI override or FIT session.sport.
+/// Both paths lowercase/collapse whitespace (lookup only; import never creates exercises).
 fn resolve_exercise_name(
     exercise_override: Option<&str>,
     activity: &FitActivity,
 ) -> Result<String> {
     if let Some(name) = exercise_override {
-        return normalize_exercise_name(name);
+        let name = normalize_exercise_name_lenient(name);
+        if name.is_empty() {
+            return Err(RepslogError::Cli(
+                "Exercise name cannot be empty".to_string(),
+            ));
+        }
+        return Ok(name);
     }
 
     if let Some(sport) = activity.sport.as_deref() {

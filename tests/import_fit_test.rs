@@ -166,6 +166,54 @@ async fn import_fit_missing_exercise_aborts_with_suggestion() {
 }
 
 #[tokio::test]
+async fn import_fit_exercise_override_is_case_insensitive() {
+    let path = fixture_path();
+    if !path.exists() {
+        return;
+    }
+    let pool = setup_test_db().await.unwrap();
+    let repo = Repository::new(pool);
+
+    let _ = repo
+        .add_exercise(
+            "running",
+            "cardio",
+            Some("[\"legs\", \"cardiovascular\"]"),
+            Some("none"),
+            "none",
+            None,
+            false,
+            false,
+        )
+        .await
+        .unwrap();
+
+    let limits = SanityLimits::default();
+    import::handle_import(
+        ImportAction::Fit {
+            path: path.to_string_lossy().to_string(),
+            exercise: Some("Running".into()),
+            workout_type: Some("Run".into()),
+            notes: None,
+            force: false,
+            hr_zone_bounds: None,
+            no_bodylog: true,
+            dry_run: false,
+        },
+        &repo,
+        &limits,
+        true,
+    )
+    .await
+    .unwrap();
+
+    let workouts = repo.list_workouts(10, None).await.unwrap();
+    assert_eq!(workouts.len(), 1);
+    let wes = repo.list_workout_exercises(workouts[0].id).await.unwrap();
+    assert_eq!(wes[0].1, "running");
+}
+
+#[tokio::test]
 async fn import_fit_dry_run_writes_nothing() {
     let path = fixture_path();
     if !path.exists() {
