@@ -1,4 +1,5 @@
 use crate::app_config::SanityLimits;
+use crate::bodylog_hr::{self, HrZoneProfile};
 use crate::cli::ImportAction;
 use crate::error::{RepslogError, Result};
 use crate::fit::{parse_fit_bytes, FitActivity, ImportPlan};
@@ -27,6 +28,7 @@ pub async fn handle_import(
             notes,
             force,
             hr_zone_bounds,
+            no_bodylog,
             dry_run,
         } => {
             import_fit(
@@ -37,6 +39,7 @@ pub async fn handle_import(
                 notes.as_deref(),
                 force,
                 hr_zone_bounds.as_ref(),
+                no_bodylog,
                 dry_run,
                 limits,
                 json,
@@ -55,6 +58,7 @@ async fn import_fit(
     notes: Option<&str>,
     force: bool,
     hr_zone_bounds: Option<&[f64; 5]>,
+    no_bodylog: bool,
     dry_run: bool,
     limits: &SanityLimits,
     json: bool,
@@ -89,12 +93,23 @@ async fn import_fit(
     }
 
     let activity = parse_fit_bytes(&bytes)?;
+
+    // Zone priority: FIT device zones > CLI bounds > bodylog (required unless --no-bodylog).
+    let needs_bodylog =
+        activity.hr_zone_seconds.is_none() && hr_zone_bounds.is_none() && !no_bodylog;
+    let bodylog_profile: Option<HrZoneProfile> = if needs_bodylog {
+        Some(bodylog_hr::resolve_from_bodylog(&activity.started_at)?)
+    } else {
+        None
+    };
+
     let plan = ImportPlan::from_activity(
         &activity,
         workout_type,
         notes,
         &source_filename,
         hr_zone_bounds,
+        bodylog_profile.as_ref(),
     )?;
 
     // Absolute sanity checks before any DB writes
@@ -181,6 +196,8 @@ async fn import_fit(
             plan.avg_cadence_spm,
             plan.total_ascent_m,
             plan.total_descent_m,
+            plan.date_of_birth.as_deref(),
+            plan.resting_hr_bpm,
             dry_run,
         )
         .await?;
@@ -222,6 +239,9 @@ async fn import_fit(
             total_ascent_m: Option<f64>,
             total_descent_m: Option<f64>,
             trackpoints_stored: usize,
+            date_of_birth: Option<String>,
+            resting_hr_bpm: Option<f64>,
+            hr_zones_source: Option<String>,
             dry_run: bool,
             file_sha256: String,
         }
@@ -239,6 +259,9 @@ async fn import_fit(
             total_ascent_m: plan.total_ascent_m,
             total_descent_m: plan.total_descent_m,
             trackpoints_stored: plan.trackpoints.len(),
+            date_of_birth: plan.date_of_birth.clone(),
+            resting_hr_bpm: plan.resting_hr_bpm,
+            hr_zones_source: plan.hr_zones_source.clone(),
             dry_run,
             file_sha256,
         })?;
@@ -262,6 +285,9 @@ async fn import_fit(
                 .unwrap_or_else(|| "—".into()),
             if dry_run { " (dry-run)" } else { "" },
         );
+        if let Some(ref src) = plan.hr_zones_source {
+            eprintln!("HR zones: {}", src);
+        }
         eprintln!("Created workout with ID {}", formatted_id);
         print_id(&formatted_id, false);
     }

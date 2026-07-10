@@ -42,6 +42,8 @@ pub async fn add_strength_set(
         None,
         None,
         None,
+        None,
+        None,
         false,
     )
     .await

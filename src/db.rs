@@ -488,6 +488,6 @@ mod tests {
                 .unwrap();
         assert_eq!(we_count.0, 2);
 
-        assert_eq!(get_current_version(&pool).await.unwrap(), 12);
+        assert_eq!(get_current_version(&pool).await.unwrap(), 13);
     }
 }

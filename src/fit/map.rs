@@ -19,6 +19,10 @@ pub struct ImportPlan {
     pub total_ascent_m: Option<f64>,
     pub total_descent_m: Option<f64>,
     pub heart_rate_zones: Option<HeartRateZones>,
+    /// Snapshot from bodylog at import (YYYY-MM-DD); used to derive age at activity time.
+    pub date_of_birth: Option<String>,
+    /// Snapshot of median sleep HR used for Karvonen (if any).
+    pub resting_hr_bpm: Option<f64>,
     pub laps: Option<Vec<Lap>>,
     pub trackpoints: Vec<Trackpoint>,
     pub device_name: Option<String>,
@@ -26,6 +30,8 @@ pub struct ImportPlan {
     pub product_id: Option<i64>,
     pub fit_sport: Option<i64>,
     pub fit_sub_sport: Option<i64>,
+    /// Diagnostics only (not stored): how zones were derived.
+    pub hr_zones_source: Option<String>,
 }
 
 impl ImportPlan {
@@ -35,6 +41,8 @@ impl ImportPlan {
         notes: Option<&str>,
         source_filename: &str,
         hr_zone_bounds: Option<&[f64; 5]>,
+        // When set, used only if FIT has no device zones and CLI bounds are absent.
+        bodylog_profile: Option<&crate::bodylog_hr::HrZoneProfile>,
     ) -> Result<Self> {
         ensure_running(activity)?;
 
@@ -57,7 +65,12 @@ impl ImportPlan {
 
         let avg_pace_min_per_km = Some((duration_seconds as f64 / 60.0) / distance_km);
 
+        let mut date_of_birth = None;
+        let mut resting_hr_bpm = None;
+        let mut hr_zones_source = None;
+
         let heart_rate_zones = if let Some(zones) = activity.hr_zone_seconds {
+            hr_zones_source = Some("FIT time_in_hr_zone".into());
             Some(HeartRateZones {
                 z1_seconds: zones[0],
                 z2_seconds: zones[1],
@@ -65,8 +78,16 @@ impl ImportPlan {
                 z4_seconds: zones[3],
                 z5_seconds: zones[4],
             })
+        } else if let Some(bounds) = hr_zone_bounds {
+            hr_zones_source = Some("CLI --hr-zone-bounds".into());
+            Some(compute_hr_zones(&activity.records, bounds))
+        } else if let Some(profile) = bodylog_profile {
+            date_of_birth = Some(profile.date_of_birth.clone());
+            resting_hr_bpm = profile.resting_hr_bpm;
+            hr_zones_source = Some(profile.method.clone());
+            Some(compute_hr_zones(&activity.records, &profile.bounds))
         } else {
-            hr_zone_bounds.map(|bounds| compute_hr_zones(&activity.records, bounds))
+            None
         };
 
         let laps = map_laps(&activity.laps, distance_km, duration_seconds as u32);
@@ -97,6 +118,8 @@ impl ImportPlan {
             total_ascent_m: activity.total_ascent_m,
             total_descent_m: activity.total_descent_m,
             heart_rate_zones,
+            date_of_birth,
+            resting_hr_bpm,
             laps,
             trackpoints,
             device_name: activity.device_name.clone(),
@@ -104,6 +127,7 @@ impl ImportPlan {
             product_id: activity.product_id,
             fit_sport: activity.sport_id,
             fit_sub_sport: activity.sub_sport_id,
+            hr_zones_source,
         })
     }
 }

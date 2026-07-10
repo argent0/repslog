@@ -25,7 +25,8 @@ This single command:
 3. Creates a workout (`--type` defaults to `Run`) with the activity start time
 4. Attaches the exercise and logs one structured cardio set
 5. Stores GPS/HR track samples into `activity_trackpoints` when the file includes a record stream
-6. Records import provenance (SHA-256 of the file) so the same file is not imported twice
+6. Fills HR zones (time in Z1–Z5) when possible — see [Heart rate zones](#heart-rate-zones)
+7. Records import provenance (SHA-256 of the file) so the same file is not imported twice
 
 Example with the sample Amazfit export:
 
@@ -54,13 +55,17 @@ repslog import fit path/to/activity.fit
 | `--type <LABEL>` | Workout type (default: `Run`) |
 | `--notes <TEXT>` | Notes (import provenance is appended) |
 | `--force` | Allow re-import of a previously imported file (previous workout is kept; hash lock is cleared) |
-| `--hr-zone-bounds A,B,C,D,E` | Upper HR bounds (bpm) for zones 1–5; computes time-in-zone from record samples when the FIT file has no zone data |
+| `--hr-zone-bounds A,B,C,D,E` | Upper HR bounds (bpm) for zones 1–5; computes time-in-zone from record samples. Skips bodylog when set |
+| `--no-bodylog` | Do not call bodylog for HR zones (zones empty unless FIT or `--hr-zone-bounds` provides them) |
 | `--dry-run` | Preview without writing |
 | `--json` | Machine-readable summary |
 
 ```bash
-repslog import fit run.fit --notes "easy evening" \
-  --hr-zone-bounds 120,140,160,175,190
+repslog import fit run.fit --notes "easy evening"
+# or explicit bounds (no bodylog needed):
+repslog import fit run.fit --hr-zone-bounds 120,140,160,175,190
+# or skip bodylog entirely:
+repslog import fit run.fit --no-bodylog
 ```
 
 ### What is imported
@@ -78,7 +83,27 @@ repslog import fit run.fit --notes "easy evening" \
 | laps (≥2) | set `laps` JSON (single full-activity lap is skipped) |
 | record stream | `activity_trackpoints` (always stored when present) |
 
-HR zones are left empty unless the FIT file includes time-in-zone data or you pass `--hr-zone-bounds`.
+### Heart rate zones
+
+Priority when filling `exercise_sets.heart_rate_zones` (seconds in Z1–Z5):
+
+1. **FIT device** `time_in_hr_zone` if present
+2. **`--hr-zone-bounds`** — bucket record samples by your bpm ceilings
+3. **bodylog** (default when 1–2 are missing) — requires the `bodylog` CLI:
+   - DOB from `bodylog config show` → age at activity date → Tanaka HRmax (`208 − 0.7×age`)
+   - Median sleep HR over the last 14 nights (`bodylog sleep list --days 14`) as resting HR
+   - **Karvonen** bounds when RHR is available; otherwise **%HRmax**
+4. With **`--no-bodylog`** and no FIT/CLI zones → zones left empty
+
+**Stored on the set (snapshot, not recomputed from bodylog later):**
+
+| Column | Meaning |
+|--------|---------|
+| `heart_rate_zones` | Time in each zone (seconds) — display bars/percentages are derived from this |
+| `date_of_birth` | Bodylog DOB at import (for age at the run’s date) |
+| `resting_hr_bpm` | Median sleep HR used for Karvonen (null if %HRmax-only) |
+
+Age, HRmax, and bound arrays are **not** stored. If bodylog is required but missing/unconfigured, import **fails** with a message to fix bodylog or pass `--hr-zone-bounds` / `--no-bodylog`.
 
 ### Sanity checks
 

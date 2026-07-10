@@ -151,8 +151,12 @@ pub enum ImportAction {
         force: bool,
         /// Optional HR zone upper bounds in bpm for zones 1-5 (comma-separated).
         /// Example: 120,140,160,175,190 — computes time-in-zone from record samples.
+        /// When set, bodylog is not required for zones.
         #[arg(long = "hr-zone-bounds", value_parser = parse_hr_zone_bounds)]
         hr_zone_bounds: Option<[f64; 5]>,
+        /// Skip bodylog for HR zones (leave zones empty unless FIT or --hr-zone-bounds provides them).
+        #[arg(long = "no-bodylog")]
+        no_bodylog: bool,
         /// Show what would be imported (no changes)
         #[arg(long)]
         dry_run: bool,

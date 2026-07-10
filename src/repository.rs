@@ -346,6 +346,8 @@ impl Repository {
         avg_cadence_spm: Option<f64>,
         total_ascent_m: Option<f64>,
         total_descent_m: Option<f64>,
+        date_of_birth: Option<&str>,
+        resting_hr_bpm: Option<f64>,
         dry_run: bool,
     ) -> Result<i64> {
         if dry_run {
@@ -355,8 +357,8 @@ impl Repository {
             workout_exercise_id, set_number, reps, weight_kg, external_load_kg, duration_seconds, distance_km, rpe, rir, 
             effective_reps, cluster_id, rest_seconds, notes, side, phase, avg_heart_rate_bpm, max_heart_rate_bpm, 
             heart_rate_zones, avg_pace_min_per_km, calories_burned, laps,
-            avg_cadence_spm, total_ascent_m, total_descent_m
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+            avg_cadence_spm, total_ascent_m, total_descent_m, date_of_birth, resting_hr_bpm
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
             .bind(workout_exercise_id)
             .bind(set_number)
             .bind(reps)
@@ -381,6 +383,8 @@ impl Repository {
             .bind(avg_cadence_spm)
             .bind(total_ascent_m)
             .bind(total_descent_m)
+            .bind(date_of_birth)
+            .bind(resting_hr_bpm)
             .execute(&self.pool)
             .await?;
         Ok(res.last_insert_rowid())

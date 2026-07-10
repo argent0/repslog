@@ -93,6 +93,10 @@ pub struct ExerciseSet {
     pub avg_cadence_spm: Option<f64>,
     pub total_ascent_m: Option<f64>,
     pub total_descent_m: Option<f64>,
+    /// Snapshot of bodylog DOB (YYYY-MM-DD) used for age-based HR zones at activity time.
+    pub date_of_birth: Option<String>,
+    /// Snapshot of median sleep HR (bpm) used for Karvonen; None if %HRmax-only.
+    pub resting_hr_bpm: Option<f64>,
     pub created_at: Option<String>,
 }
 

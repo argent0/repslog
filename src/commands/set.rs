@@ -136,6 +136,8 @@ pub async fn handle_set(
                     None,
                     None,
                     None,
+                    None, // date_of_birth
+                    None, // resting_hr_bpm
                     dry_run,
                 )
                 .await?;
@@ -228,6 +230,8 @@ pub async fn handle_set(
                     None,
                     None,
                     None,
+                    None, // date_of_birth
+                    None, // resting_hr_bpm
                     dry_run,
                 )
                 .await?;
@@ -367,6 +371,8 @@ pub async fn handle_set(
                         None,
                         None,
                         None,
+                        None, // date_of_birth
+                        None, // resting_hr_bpm
                         dry_run,
                     )
                     .await?;
@@ -846,6 +852,8 @@ pub async fn handle_set(
                             None,
                             None,
                             None,
+                            None, // date_of_birth
+                            None, // resting_hr_bpm
                             dry_run,
                         )
                         .await?;
@@ -951,6 +959,8 @@ pub async fn handle_set(
                             None,
                             None,
                             None,
+                            None, // date_of_birth
+                            None, // resting_hr_bpm
                             dry_run,
                         )
                         .await?;

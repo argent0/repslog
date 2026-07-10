@@ -92,6 +92,8 @@ async fn test_cardio_tracking() {
             Some(160.0),
             Some(42.0),
             Some(38.0),
+            None,
+            None,
             false,
         )
         .await

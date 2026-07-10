@@ -1,4 +1,5 @@
 pub mod app_config;
+pub mod bodylog_hr;
 pub mod bodyweight;
 pub mod cli;
 pub mod commands;

@@ -204,17 +204,22 @@ fi
 $REPSLOG config generate --path "$CFG_PATH" --force > /dev/null
 
 # 8. FIT import (running)
+# Isolated XDG_DATA_HOME has no bodylog profile; use --no-bodylog / --hr-zone-bounds.
 if [ -f "tests/fixtures/Zepp20260710164935.fit" ]; then
- echo "Testing: repslog import fit"
- FIT_WID=$($REPSLOG import fit tests/fixtures/Zepp20260710164935.fit )
+ echo "Testing: repslog import fit --no-bodylog"
+ FIT_WID=$($REPSLOG import fit tests/fixtures/Zepp20260710164935.fit --no-bodylog)
  echo " imported workout ID: $FIT_WID"
  $REPSLOG workout view "$FIT_WID" > /dev/null
+ echo "Testing: repslog import fit --hr-zone-bounds"
+ FIT_WID2=$($REPSLOG import fit tests/fixtures/Zepp20260710164935.fit --force \
+   --hr-zone-bounds 120,140,160,175,190)
+ $REPSLOG workout view "$FIT_WID2" > /dev/null
  echo "Testing: repslog import fit --dry-run"
- $REPSLOG import fit tests/fixtures/Zepp20260710164935.fit --dry-run > /dev/null || true
+ $REPSLOG import fit tests/fixtures/Zepp20260710164935.fit --no-bodylog --dry-run > /dev/null || true
  # dry-run after real import still hits hash unless force; use force dry-run path:
- $REPSLOG import fit tests/fixtures/Zepp20260710164935.fit --force --dry-run > /dev/null
+ $REPSLOG import fit tests/fixtures/Zepp20260710164935.fit --force --no-bodylog --dry-run > /dev/null
  echo "Testing: re-import without --force fails"
- if $REPSLOG import fit tests/fixtures/Zepp20260710164935.fit 2>/dev/null; then
+ if $REPSLOG import fit tests/fixtures/Zepp20260710164935.fit --no-bodylog 2>/dev/null; then
  echo "Expected re-import to fail" >&2
  exit 1
  fi

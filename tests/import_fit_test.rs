@@ -45,6 +45,7 @@ async fn import_fit_creates_running_workout() {
             notes: Some("test import".into()),
             force: false,
             hr_zone_bounds: None,
+            no_bodylog: true,
             dry_run: false,
         },
         &repo,
@@ -95,6 +96,7 @@ async fn import_fit_creates_running_workout() {
             notes: None,
             force: false,
             hr_zone_bounds: None,
+            no_bodylog: true,
             dry_run: false,
         },
         &repo,
@@ -139,6 +141,7 @@ async fn import_fit_missing_exercise_aborts_with_suggestion() {
             notes: None,
             force: false,
             hr_zone_bounds: None,
+            no_bodylog: true,
             dry_run: false,
         },
         &repo,
@@ -194,6 +197,7 @@ async fn import_fit_dry_run_writes_nothing() {
             notes: None,
             force: false,
             hr_zone_bounds: None,
+            no_bodylog: true,
             dry_run: true,
         },
         &repo,
@@ -239,6 +243,7 @@ async fn import_fit_hr_zone_bounds() {
             notes: None,
             force: false,
             hr_zone_bounds: Some([120.0, 140.0, 160.0, 175.0, 200.0]),
+            no_bodylog: true,
             dry_run: false,
         },
         &repo,
@@ -278,6 +283,6 @@ fn import_plan_rejects_non_running() {
     let mut act = parse_fit_path(&path).unwrap();
     act.sport = Some("cycling".into());
     act.sport_id = Some(2);
-    let err = ImportPlan::from_activity(&act, None, None, "x.fit", None);
+    let err = ImportPlan::from_activity(&act, None, None, "x.fit", None, None);
     assert!(err.is_err());
 }
