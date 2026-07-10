@@ -26,7 +26,6 @@ pub async fn handle_import(
             workout_type,
             notes,
             force,
-            store_track,
             hr_zone_bounds,
             dry_run,
         } => {
@@ -37,7 +36,6 @@ pub async fn handle_import(
                 workout_type.as_deref(),
                 notes.as_deref(),
                 force,
-                store_track,
                 hr_zone_bounds.as_ref(),
                 dry_run,
                 limits,
@@ -56,7 +54,6 @@ async fn import_fit(
     workout_type: Option<&str>,
     notes: Option<&str>,
     force: bool,
-    store_track: bool,
     hr_zone_bounds: Option<&[f64; 5]>,
     dry_run: bool,
     limits: &SanityLimits,
@@ -98,7 +95,6 @@ async fn import_fit(
         notes,
         &source_filename,
         hr_zone_bounds,
-        store_track,
     )?;
 
     // Absolute sanity checks before any DB writes
@@ -126,7 +122,7 @@ async fn import_fit(
         },
         limits,
     )?;
-    if store_track && !plan.trackpoints.is_empty() {
+    if !plan.trackpoints.is_empty() {
         sanity::validate_trackpoints(&plan.trackpoints, limits, 20)?;
     }
 
@@ -189,7 +185,7 @@ async fn import_fit(
         )
         .await?;
 
-    if store_track && !plan.trackpoints.is_empty() {
+    if !plan.trackpoints.is_empty() {
         repo.insert_trackpoints_batch(set_id, &plan.trackpoints, dry_run)
             .await?;
     }
@@ -242,11 +238,7 @@ async fn import_fit(
             avg_cadence_spm: plan.avg_cadence_spm,
             total_ascent_m: plan.total_ascent_m,
             total_descent_m: plan.total_descent_m,
-            trackpoints_stored: if store_track {
-                plan.trackpoints.len()
-            } else {
-                0
-            },
+            trackpoints_stored: plan.trackpoints.len(),
             dry_run,
             file_sha256,
         })?;

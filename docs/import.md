@@ -24,7 +24,8 @@ This single command:
 2. Resolves the exercise from FIT sport (or `--exercise`)
 3. Creates a workout (`--type` defaults to `Run`) with the activity start time
 4. Attaches the exercise and logs one structured cardio set
-5. Records import provenance (SHA-256 of the file) so the same file is not imported twice
+5. Stores GPS/HR track samples into `activity_trackpoints` when the file includes a record stream
+6. Records import provenance (SHA-256 of the file) so the same file is not imported twice
 
 Example with the sample Amazfit export:
 
@@ -53,14 +54,13 @@ repslog import fit path/to/activity.fit
 | `--type <LABEL>` | Workout type (default: `Run`) |
 | `--notes <TEXT>` | Notes (import provenance is appended) |
 | `--force` | Allow re-import of a previously imported file (previous workout is kept; hash lock is cleared) |
-| `--store-track` | Persist GPS/HR samples into `activity_trackpoints` |
 | `--hr-zone-bounds A,B,C,D,E` | Upper HR bounds (bpm) for zones 1–5; computes time-in-zone from record samples when the FIT file has no zone data |
 | `--dry-run` | Preview without writing |
 | `--json` | Machine-readable summary |
 
 ```bash
 repslog import fit run.fit --notes "easy evening" \
-  --hr-zone-bounds 120,140,160,175,190 --store-track
+  --hr-zone-bounds 120,140,160,175,190
 ```
 
 ### What is imported
@@ -76,7 +76,7 @@ repslog import fit run.fit --notes "easy evening" \
 | total ascent / descent | `total_ascent_m` / `total_descent_m` |
 | derived pace | `avg_pace_min_per_km` |
 | laps (≥2) | set `laps` JSON (single full-activity lap is skipped) |
-| record stream | optional trackpoints with `--store-track` |
+| record stream | `activity_trackpoints` (always stored when present) |
 
 HR zones are left empty unless the FIT file includes time-in-zone data or you pass `--hr-zone-bounds`.
 

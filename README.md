@@ -93,7 +93,7 @@ repslog set add-cluster <we_id> --reps "10,5,5" --weight 100 --rir "0,0,1" --eff
 repslog import fit Zepp20260710164935.fit
 repslog workout view <id>
 ```
-Exercise is taken from FIT `session.sport` (e.g. `running`); it must already exist in the catalog. See `docs/import.md` for `--exercise` override, `--store-track`, HR zone bounds, and re-import rules.
+Exercise is taken from FIT `session.sport` (e.g. `running`); it must already exist in the catalog. Trackpoints (GPS/HR samples) are stored automatically when present. See `docs/import.md` for `--exercise` override, HR zone bounds, and re-import rules.
 
 **Manual structured path:** always use `set add-cardio` — do not store distance, pace, HR, or laps only in workout `--notes`.
 ```bash

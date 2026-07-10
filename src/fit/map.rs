@@ -35,7 +35,6 @@ impl ImportPlan {
         notes: Option<&str>,
         source_filename: &str,
         hr_zone_bounds: Option<&[f64; 5]>,
-        store_track: bool,
     ) -> Result<Self> {
         ensure_running(activity)?;
 
@@ -72,15 +71,12 @@ impl ImportPlan {
 
         let laps = map_laps(&activity.laps, distance_km, duration_seconds as u32);
 
-        let trackpoints = if store_track {
-            activity
-                .records
-                .iter()
-                .filter_map(|r| r.to_trackpoint())
-                .collect()
-        } else {
-            Vec::new()
-        };
+        // Always keep the record stream when present (GPS/HR samples).
+        let trackpoints: Vec<Trackpoint> = activity
+            .records
+            .iter()
+            .filter_map(|r| r.to_trackpoint())
+            .collect();
 
         let notes = build_notes(notes, source_filename, activity.device_name.as_deref());
 

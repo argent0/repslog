@@ -44,7 +44,6 @@ async fn import_fit_creates_running_workout() {
             workout_type: Some("Run".into()),
             notes: Some("test import".into()),
             force: false,
-            store_track: false,
             hr_zone_bounds: None,
             dry_run: false,
         },
@@ -80,6 +79,9 @@ async fn import_fit_creates_running_workout() {
     assert!(s.avg_pace_min_per_km.unwrap() > 5.0 && s.avg_pace_min_per_km.unwrap() < 6.5);
     // Single-lap FIT → no laps JSON
     assert!(s.laps.is_none() || s.laps.as_ref().map(|j| j.0.is_empty()).unwrap_or(true));
+    // Record stream is always stored when present
+    let n = repo.count_trackpoints(s.id).await.unwrap();
+    assert!(n > 1000, "expected many trackpoints, got {}", n);
 
     // Duration minutes on workout
     assert_eq!(w.duration_minutes, Some(47)); // 2808/60 ≈ 46.8 → 47
@@ -92,7 +94,6 @@ async fn import_fit_creates_running_workout() {
             workout_type: None,
             notes: None,
             force: false,
-            store_track: false,
             hr_zone_bounds: None,
             dry_run: false,
         },
@@ -137,7 +138,6 @@ async fn import_fit_missing_exercise_aborts_with_suggestion() {
             workout_type: None,
             notes: None,
             force: false,
-            store_track: false,
             hr_zone_bounds: None,
             dry_run: false,
         },
@@ -193,7 +193,6 @@ async fn import_fit_dry_run_writes_nothing() {
             workout_type: None,
             notes: None,
             force: false,
-            store_track: false,
             hr_zone_bounds: None,
             dry_run: true,
         },
@@ -209,7 +208,7 @@ async fn import_fit_dry_run_writes_nothing() {
 }
 
 #[tokio::test]
-async fn import_fit_store_track_and_hr_zones() {
+async fn import_fit_hr_zone_bounds() {
     let path = fixture_path();
     if !path.exists() {
         return;
@@ -239,7 +238,6 @@ async fn import_fit_store_track_and_hr_zones() {
             workout_type: None,
             notes: None,
             force: false,
-            store_track: true,
             hr_zone_bounds: Some([120.0, 140.0, 160.0, 175.0, 200.0]),
             dry_run: false,
         },
@@ -280,6 +278,6 @@ fn import_plan_rejects_non_running() {
     let mut act = parse_fit_path(&path).unwrap();
     act.sport = Some("cycling".into());
     act.sport_id = Some(2);
-    let err = ImportPlan::from_activity(&act, None, None, "x.fit", None, false);
+    let err = ImportPlan::from_activity(&act, None, None, "x.fit", None);
     assert!(err.is_err());
 }

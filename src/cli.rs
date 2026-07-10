@@ -149,9 +149,6 @@ pub enum ImportAction {
         /// Allow re-import of a previously imported file (keeps the old workout; drops hash lock)
         #[arg(long)]
         force: bool,
-        /// Persist GPS/HR track samples into activity_trackpoints
-        #[arg(long = "store-track")]
-        store_track: bool,
         /// Optional HR zone upper bounds in bpm for zones 1-5 (comma-separated).
         /// Example: 120,140,160,175,190 — computes time-in-zone from record samples.
         #[arg(long = "hr-zone-bounds", value_parser = parse_hr_zone_bounds)]
