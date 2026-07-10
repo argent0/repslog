@@ -69,12 +69,12 @@ For advanced hypertrophy training, you can log multiple "mini-sets" in a single 
 ```bash
 # Log 3 mini-sets (10, 5, 5 reps) with 15s rest between them
 repslog set add-cluster <WE_ID> \
-  --reps "10,5,5" \
-  --weight 100 \
-  --phase full \
-  --rir "0,0,1" \
-  --effective-reps "6,4,3" \
-  --rest 15
+ --reps "10,5,5" \
+ --weight 100 \
+ --phase full \
+ --rir "0,0,1" \
+ --effective-reps "6,4,3" \
+ --rest 15
 ```
 
 This creates three separate set entries grouped together, making it easy to track the total volume and density of the cluster.
@@ -92,22 +92,22 @@ Numeric fields on sets and workouts are **hard-failed** against absolute min/max
 
 Cardio sets support detailed metrics compatible with smart watch exports (like Samsung Health).
 
-**Prefer FIT import when you have a device file:** see [import.md](import.md) for `repslog import fit --exercise Running`. The manual `set add-cardio` path below remains for hand entry.
+**Prefer FIT import when you have a device file:** see [import.md](import.md) for `repslog import fit`. The manual `set add-cardio` path below remains for hand entry.
 
 ```bash
 repslog set add-cardio <WE_ID> \
-  --phase full \
-  --distance 7.98 \
-  --duration 2701 \
-  --avg-heart-rate 154 \
-  --max-heart-rate 175 \
-  --pace 5.64 \
-  --calories 620 \
-  --hr-zones '{"z1_seconds": 120, "z2_seconds": 1800, "z3_seconds": 600, "z4_seconds": 120, "z5_seconds": 61}' \
-  --laps '[
-    {"lap_number":1,"distance_km":1.0,"duration_seconds":332,"pace_min_per_km":5.533},
-    {"lap_number":2,"distance_km":1.0,"duration_seconds":345,"pace_min_per_km":5.75}
-  ]'
+ --phase full \
+ --distance 7.98 \
+ --duration 2701 \
+ --avg-heart-rate 154 \
+ --max-heart-rate 175 \
+ --pace 5.64 \
+ --calories 620 \
+ --hr-zones '{"z1_seconds": 120, "z2_seconds": 1800, "z3_seconds": 600, "z4_seconds": 120, "z5_seconds": 61}' \
+ --laps '[
+ {"lap_number":1,"distance_km":1.0,"duration_seconds":332,"pace_min_per_km":5.533},
+ {"lap_number":2,"distance_km":1.0,"duration_seconds":345,"pace_min_per_km":5.75}
+ ]'
 ```
 
 ### Heart Rate Zones
@@ -146,7 +146,7 @@ Mistakes happen (especially during unilateral sessions). Use these commands to f
 ```bash
 repslog set update 287 --reps 10 --weight 82 --phase full --external-load 5 --notes "Left leg" --side left
 repslog set move 287 --to 1
-repslog set delete 287 --force   # --force skips the confirmation prompt
+repslog set delete 287 --force # --force skips the confirmation prompt
 ```
 
 - `set update` accepts any combination of fields (reps, weight, phase, rir, notes, side, rest, etc.).

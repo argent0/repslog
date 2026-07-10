@@ -14,6 +14,14 @@ When you update `repslog`, you should run the `migrate` command to ensure your d
 repslog migrate
 ```
 
+### Interactive data migrations
+
+Some migrations change existing data. Migration **012** lowercases every exercise name and **merges** rows that would collide after lowercasing (e.g. `Running` and `running`).
+
+- On a TTY (interactive terminal), `repslog migrate` may ask which exercise id to keep when a merge is ambiguous.
+- Non-interactive runs (pipes, CI, `--json`) auto-pick the survivor: most workout uses, then lowest id.
+- After 012, catalog names must stay lowercase (enforced when adding exercises).
+
 ## Migration Commands
 
 ### Check Status

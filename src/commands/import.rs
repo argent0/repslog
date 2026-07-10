@@ -1,12 +1,12 @@
 use crate::app_config::SanityLimits;
 use crate::cli::ImportAction;
 use crate::error::{RepslogError, Result};
-use crate::fit::{parse_fit_bytes, ImportPlan};
-use crate::load_type;
+use crate::fit::{parse_fit_bytes, FitActivity, ImportPlan};
 use crate::repository::Repository;
 use crate::sanity::{self, ProposedSetMetrics, ProposedWorkoutMetrics};
 use crate::utils::{
-    format_datetime, format_dry_run_id, format_duration, format_pace, print_id, print_json,
+    find_exercise_name_conflicts, format_datetime, format_dry_run_id, format_duration, format_pace,
+    normalize_exercise_name, normalize_exercise_name_lenient, print_id, print_json,
 };
 use sha2::{Digest, Sha256};
 use sqlx::types::Json;
@@ -33,7 +33,7 @@ pub async fn handle_import(
             import_fit(
                 repo,
                 &path,
-                &exercise,
+                exercise.as_deref(),
                 workout_type.as_deref(),
                 notes.as_deref(),
                 force,
@@ -52,7 +52,7 @@ pub async fn handle_import(
 async fn import_fit(
     repo: &Repository,
     path: &str,
-    exercise_name: &str,
+    exercise_override: Option<&str>,
     workout_type: Option<&str>,
     notes: Option<&str>,
     force: bool,
@@ -130,15 +130,8 @@ async fn import_fit(
         sanity::validate_trackpoints(&plan.trackpoints, limits, 20)?;
     }
 
-    // Resolve exercise (required name; create as cardio if missing)
-    let exercise_name = exercise_name.trim();
-    if exercise_name.is_empty() {
-        return Err(RepslogError::Cli(
-            "--exercise is required and must not be empty".into(),
-        ));
-    }
-
-    let exercise_id = resolve_or_create_exercise(repo, exercise_name, dry_run).await?;
+    let exercise_name = resolve_exercise_name(exercise_override, &activity)?;
+    let exercise_id = require_catalog_exercise(repo, &exercise_name, path).await?;
 
     let workout_id = repo
         .create_workout(
@@ -238,7 +231,7 @@ async fn import_fit(
         }
         print_json(&ImportOut {
             workout_id: formatted_id,
-            exercise: exercise_name.to_string(),
+            exercise: exercise_name,
             started_at: format_datetime(&plan.started_at),
             distance_km: plan.distance_km,
             duration_seconds: plan.duration_seconds,
@@ -284,26 +277,75 @@ async fn import_fit(
     Ok(())
 }
 
-async fn resolve_or_create_exercise(repo: &Repository, name: &str, dry_run: bool) -> Result<i64> {
-    let existing = repo.list_exercises(Some(name.to_string()), None).await?;
-    if let Some(ex) = existing.iter().find(|e| e.name.eq_ignore_ascii_case(name)) {
-        return Ok(ex.id);
+/// Resolve catalog exercise name from optional CLI override or FIT session.sport.
+fn resolve_exercise_name(
+    exercise_override: Option<&str>,
+    activity: &FitActivity,
+) -> Result<String> {
+    if let Some(name) = exercise_override {
+        return normalize_exercise_name(name);
     }
-    // Exact-ish: prefer exact match after normalization
-    if let Some(ex) = existing.iter().find(|e| e.name == name) {
+
+    if let Some(sport) = activity.sport.as_deref() {
+        let name = normalize_exercise_name_lenient(sport);
+        if !name.is_empty() {
+            return Ok(name);
+        }
+    }
+
+    // Fallback: known FIT sport ids (Garmin profile: running = 1)
+    if activity.sport_id == Some(1) {
+        return Ok("running".to_string());
+    }
+
+    Err(RepslogError::Cli(
+        "FIT file has no session.sport; cannot determine exercise. \
+         Pass --exercise <name> to override, or fix the export."
+            .into(),
+    ))
+}
+
+/// Look up exercise; abort with similar-name hints and an add recipe if missing.
+async fn require_catalog_exercise(
+    repo: &Repository,
+    exercise_name: &str,
+    fit_path: &Path,
+) -> Result<i64> {
+    if let Some(ex) = repo.find_exercise_by_id_or_name(exercise_name).await? {
         return Ok(ex.id);
     }
 
-    // Create cardio exercise matching init seed defaults for Running-like work
-    repo.add_exercise(
-        name,
-        "cardio",
-        Some("[\"legs\", \"cardiovascular\"]"),
-        Some("none"),
-        load_type::NONE,
-        Some("Imported / outdoor or treadmill run"),
-        true,
-        dry_run,
-    )
-    .await
+    let catalog = repo.list_exercises(None, None).await?;
+    let catalog_pairs: Vec<(i64, String)> =
+        catalog.iter().map(|e| (e.id, e.name.clone())).collect();
+    let similar = find_exercise_name_conflicts(exercise_name, &catalog_pairs);
+
+    let mut msg = format!(
+        "No catalog exercise matching '{}' (from FIT sport or --exercise).\n",
+        exercise_name
+    );
+
+    if similar.is_empty() {
+        msg.push_str("\nNo similarly named exercises found in the catalog.\n");
+    } else {
+        msg.push_str("\nSimilar exercises:\n");
+        for c in &similar {
+            msg.push_str(&format!("  - {} (id {})\n", c.existing_name, c.existing_id));
+        }
+        msg.push_str(
+            "\nIf one of these is correct, re-import with --exercise <name>, or rename/add to match the FIT sport.\n",
+        );
+    }
+
+    let path_display = fit_path.display();
+    msg.push_str(&format!(
+        "\nAdd a new exercise, then re-import:\n  \
+         repslog exercise add \"{name}\" --category cardio --equipment none --load-type none\n  \
+         repslog import fit {path}\n\n\
+         Search catalog: repslog exercise search {name}",
+        name = exercise_name,
+        path = path_display,
+    ));
+
+    Err(RepslogError::Cli(msg))
 }

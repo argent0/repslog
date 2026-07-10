@@ -21,10 +21,10 @@ async fn import_fit_creates_running_workout() {
     let pool = setup_test_db().await.unwrap();
     let repo = Repository::new(pool);
 
-    // Seed Running exercise like init does
+    // Seed running exercise like init does
     let _ = repo
         .add_exercise(
-            "Running",
+            "running",
             "cardio",
             Some("[\"legs\", \"cardiovascular\"]"),
             Some("none"),
@@ -40,7 +40,7 @@ async fn import_fit_creates_running_workout() {
     import::handle_import(
         ImportAction::Fit {
             path: path.to_string_lossy().to_string(),
-            exercise: "Running".into(),
+            exercise: None,
             workout_type: Some("Run".into()),
             notes: Some("test import".into()),
             force: false,
@@ -64,7 +64,7 @@ async fn import_fit_creates_running_workout() {
 
     let wes = repo.list_workout_exercises(w.id).await.unwrap();
     assert_eq!(wes.len(), 1);
-    assert_eq!(wes[0].1, "Running");
+    assert_eq!(wes[0].1, "running");
 
     let sets = repo.list_sets(wes[0].0.id).await.unwrap();
     assert_eq!(sets.len(), 1);
@@ -88,7 +88,7 @@ async fn import_fit_creates_running_workout() {
     let err = import::handle_import(
         ImportAction::Fit {
             path: path.to_string_lossy().to_string(),
-            exercise: "Running".into(),
+            exercise: None,
             workout_type: None,
             notes: None,
             force: false,
@@ -106,6 +106,63 @@ async fn import_fit_creates_running_workout() {
 }
 
 #[tokio::test]
+async fn import_fit_missing_exercise_aborts_with_suggestion() {
+    let path = fixture_path();
+    if !path.exists() {
+        return;
+    }
+    let pool = setup_test_db().await.unwrap();
+    let repo = Repository::new(pool);
+
+    // Seed a similar name but not exact "running"
+    let _ = repo
+        .add_exercise(
+            "run",
+            "cardio",
+            Some("[\"legs\", \"cardiovascular\"]"),
+            Some("none"),
+            "none",
+            None,
+            true,
+            false,
+        )
+        .await
+        .unwrap();
+
+    let limits = SanityLimits::default();
+    let err = import::handle_import(
+        ImportAction::Fit {
+            path: path.to_string_lossy().to_string(),
+            exercise: None,
+            workout_type: None,
+            notes: None,
+            force: false,
+            store_track: false,
+            hr_zone_bounds: None,
+            dry_run: false,
+        },
+        &repo,
+        &limits,
+        true,
+    )
+    .await
+    .unwrap_err();
+
+    let msg = format!("{}", err);
+    assert!(
+        msg.contains("No catalog exercise matching 'running'"),
+        "msg={}",
+        msg
+    );
+    assert!(msg.contains("exercise add"), "msg={}", msg);
+    assert!(msg.contains("run"), "similar hint missing: {}", msg);
+
+    // No workout written
+    let workouts = repo.list_workouts(10, None).await.unwrap();
+    assert!(workouts.is_empty());
+}
+
+#[tokio::test]
 async fn import_fit_dry_run_writes_nothing() {
     let path = fixture_path();
     if !path.exists() {
@@ -114,11 +171,25 @@ async fn import_fit_dry_run_writes_nothing() {
     let pool = setup_test_db().await.unwrap();
     let repo = Repository::new(pool);
 
+    let _ = repo
+        .add_exercise(
+            "running",
+            "cardio",
+            Some("[\"legs\", \"cardiovascular\"]"),
+            Some("none"),
+            "none",
+            None,
+            false,
+            false,
+        )
+        .await
+        .unwrap();
+
     let limits = SanityLimits::default();
     import::handle_import(
         ImportAction::Fit {
             path: path.to_string_lossy().to_string(),
-            exercise: "Running".into(),
+            exercise: None,
             workout_type: None,
             notes: None,
             force: false,
@@ -146,11 +217,25 @@ async fn import_fit_store_track_and_hr_zones() {
     let pool = setup_test_db().await.unwrap();
     let repo = Repository::new(pool);
 
+    let _ = repo
+        .add_exercise(
+            "running",
+            "cardio",
+            Some("[\"legs\", \"cardiovascular\"]"),
+            Some("none"),
+            "none",
+            None,
+            false,
+            false,
+        )
+        .await
+        .unwrap();
+
     let limits = SanityLimits::default();
     import::handle_import(
         ImportAction::Fit {
             path: path.to_string_lossy().to_string(),
-            exercise: "Running".into(),
+            exercise: None,
             workout_type: None,
             notes: None,
             force: false,

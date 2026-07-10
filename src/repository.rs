@@ -3,7 +3,7 @@ use crate::models::{
     ActivityImport, Exercise, ExerciseSet, HeartRateZones, Lap, Trackpoint, Workout,
     WorkoutExercise,
 };
-use crate::utils::parse_datetime;
+use crate::utils::{normalize_exercise_name, parse_datetime};
 use sqlx::sqlite::SqlitePool;
 use sqlx::types::Json;
 use sqlx::Row;
@@ -30,6 +30,7 @@ impl Repository {
         is_custom: bool,
         dry_run: bool,
     ) -> Result<i64> {
+        let name = normalize_exercise_name(name)?;
         if dry_run {
             return self.get_next_id("exercises").await;
         }
@@ -37,7 +38,7 @@ impl Repository {
             "INSERT INTO exercises (name, category, muscle_groups, equipment, load_type, description, is_custom) \
              VALUES (?, ?, ?, ?, ?, ?, ?)",
         )
-        .bind(name)
+        .bind(&name)
         .bind(category)
         .bind(muscle_groups)
         .bind(equipment)

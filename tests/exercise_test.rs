@@ -113,7 +113,7 @@ async fn test_exercise_add_rejects_near_duplicate_of_seeded() {
     .unwrap_err();
 
     assert!(err.to_string().contains("already exists"));
-    assert!(err.to_string().contains("Pullups"));
+    assert!(err.to_string().contains("pullups"));
 }
 
 #[tokio::test]

@@ -46,7 +46,7 @@ repslog workout update "$ID" --duration 40 --feeling 4
 
 ```bash
 ID=$(repslog workout create --type "Run" --date "2026-07-05 10:00:00" --notes "brief summary")
-WE=$(repslog workout-exercise add "$ID" "Running")
+WE=$(repslog workout-exercise add "$ID" "running")
 repslog set add-cardio "$WE" \
   --distance 7.14 \
   --duration 2569 \
@@ -78,7 +78,7 @@ repslog set add "$WE" --duration 60 --weight 82 --phase full --notes "Wall sit h
 
 - **Recommended:** Calisthenics, Run, Push, Pull, Legs, Upper, Full Body, Static Holds, Yoga, Cardio
 - **Avoid:** Long descriptions or sentences in `--type` — put those in `--notes` instead
-- **Avoid:** Case variants and synonyms for the same modality (pick `Run` or `Running`, not both)
+- **Avoid:** Case variants and synonyms for the same modality (pick one spelling and stick to it)
 
 ### Completing the Record
 
@@ -101,7 +101,7 @@ Before adding a custom exercise name, search the catalog:
 repslog exercise search "pull"
 ```
 
-Near-duplicate names (e.g. "Pull Up", "Pull Ups", "Pullups") fragment history and stats. Prefer seeded or existing entries when they match your movement.
+Near-duplicate names (e.g. "Pull Up", "Pull Ups", "pullups") fragment history and stats. Prefer seeded or existing entries when they match your movement.
 
 ### Unilateral Training
 
@@ -131,7 +131,7 @@ Use `--goal-reps` instead of describing targets only in notes — structured goa
 When scripting or prompting an LLM to log a run:
 
 1. `repslog workout create --type Run --date YYYY-MM-DD HH:MM:SS [--notes "brief summary"]`
-2. `repslog workout-exercise add <ID> Running`
+2. `repslog workout-exercise add <ID> running`
 3. `repslog set add-cardio <WE_ID> --distance ... --duration ... --avg-heart-rate ... --max-heart-rate ... --pace ... --calories ... --hr-zones '...' --laps '[...]'`
 4. `repslog workout update <ID> --duration <minutes> --feeling <1-5>`
 
@@ -177,7 +177,7 @@ repslog workout update <WORKOUT_ID> \
 Before you can log sets, you must add an exercise to your workout:
 
 ```bash
-repslog workout-exercise add <WORKOUT_ID> "Squat (Barbell)"
+repslog workout-exercise add <WORKOUT_ID> "squat (barbell)"
 ```
 
 This returns a **Workout-Exercise ID (WE_ID)**, which is used to log individual sets. See [logging.md](logging.md) for set commands.

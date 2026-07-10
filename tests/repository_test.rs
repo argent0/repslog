@@ -11,7 +11,7 @@ async fn test_exercise_management() {
 
     let id = repo
         .add_exercise(
-            "Test Pushups",
+            "test pushups",
             "calisthenics",
             None,
             None,
@@ -25,14 +25,14 @@ async fn test_exercise_management() {
     assert!(id > 0);
 
     let exercises = repo
-        .list_exercises(Some("Test".to_string()), None)
+        .list_exercises(Some("test".to_string()), None)
         .await
         .unwrap();
     assert_eq!(exercises.len(), 1);
-    assert_eq!(exercises[0].name, "Test Pushups");
+    assert_eq!(exercises[0].name, "test pushups");
 
     let found = repo
-        .find_exercise_by_id_or_name("Test Pushups")
+        .find_exercise_by_id_or_name("test pushups")
         .await
         .unwrap();
     assert!(found.is_some());
@@ -46,7 +46,7 @@ async fn test_workout_flow() {
     // 1. Setup Exercise
     let ex_id = repo
         .add_exercise(
-            "Bench Press",
+            "bench press",
             "strength",
             None,
             Some("barbell"),
@@ -114,7 +114,7 @@ async fn test_workout_flow() {
 
     let we_list = repo.list_workout_exercises(w_id).await.unwrap();
     assert_eq!(we_list.len(), 1);
-    assert_eq!(we_list[0].1, "Bench Press");
+    assert_eq!(we_list[0].1, "bench press");
 
     let sets = repo.list_sets(we_id).await.unwrap();
     assert_eq!(sets.len(), 2);
@@ -136,7 +136,7 @@ async fn test_new_set_fields() {
 
     let ex_id = repo
         .add_exercise(
-            "New Fields Exercise",
+            "new fields exercise",
             "strength",
             None,
             None,

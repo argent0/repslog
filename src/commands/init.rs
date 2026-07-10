@@ -1,4 +1,4 @@
-use crate::db::run_migrations;
+use crate::db::{run_migrations, MigrationOptions};
 use crate::error::Result;
 use crate::load_type::{BODY_MASS, EXTERNAL, NONE};
 use crate::repository::Repository;
@@ -9,7 +9,15 @@ pub async fn handle_init(pool: &SqlitePool, dry_run: bool, json: bool) -> Result
         println!("Initializing database...");
     }
     if !dry_run {
-        run_migrations(pool, false).await?;
+        run_migrations(
+            pool,
+            MigrationOptions {
+                force: false,
+                interactive: false,
+                quiet: json,
+            },
+        )
+        .await?;
     }
 
     let repo = Repository::new(pool.clone());
@@ -17,7 +25,7 @@ pub async fn handle_init(pool: &SqlitePool, dry_run: bool, json: bool) -> Result
     #[allow(clippy::type_complexity)]
     let default_exercises: Vec<(&str, &str, Option<&str>, Option<&str>, &str, Option<&str>)> = vec![
         (
-            "Pushups",
+            "pushups",
             "calisthenics",
             Some("[\"chest\", \"triceps\", \"shoulders\"]"),
             None,
@@ -25,7 +33,7 @@ pub async fn handle_init(pool: &SqlitePool, dry_run: bool, json: bool) -> Result
             Some("Basic pushup"),
         ),
         (
-            "Pullups",
+            "pullups",
             "calisthenics",
             Some("[\"back\", \"biceps\"]"),
             None,
@@ -33,7 +41,7 @@ pub async fn handle_init(pool: &SqlitePool, dry_run: bool, json: bool) -> Result
             Some("Basic pullup"),
         ),
         (
-            "Dips",
+            "dips",
             "calisthenics",
             Some("[\"chest\", \"triceps\", \"shoulders\"]"),
             None,
@@ -41,7 +49,7 @@ pub async fn handle_init(pool: &SqlitePool, dry_run: bool, json: bool) -> Result
             Some("Basic dip"),
         ),
         (
-            "Squats",
+            "squats",
             "calisthenics",
             Some("[\"legs\"]"),
             None,
@@ -49,7 +57,7 @@ pub async fn handle_init(pool: &SqlitePool, dry_run: bool, json: bool) -> Result
             Some("Basic bodyweight squat"),
         ),
         (
-            "Lunges",
+            "lunges",
             "calisthenics",
             Some("[\"legs\"]"),
             None,
@@ -57,7 +65,7 @@ pub async fn handle_init(pool: &SqlitePool, dry_run: bool, json: bool) -> Result
             Some("Basic lunges"),
         ),
         (
-            "Plank",
+            "plank",
             "flexibility",
             Some("[\"core\"]"),
             None,
@@ -65,7 +73,7 @@ pub async fn handle_init(pool: &SqlitePool, dry_run: bool, json: bool) -> Result
             Some("Timed plank"),
         ),
         (
-            "Muscle Up",
+            "muscle up",
             "calisthenics",
             Some("[\"back\", \"chest\", \"triceps\", \"biceps\"]"),
             None,
@@ -73,7 +81,7 @@ pub async fn handle_init(pool: &SqlitePool, dry_run: bool, json: bool) -> Result
             Some("Advanced calisthenics move"),
         ),
         (
-            "Bench Press",
+            "bench press",
             "strength",
             Some("[\"chest\", \"triceps\"]"),
             Some("barbell"),
@@ -81,7 +89,7 @@ pub async fn handle_init(pool: &SqlitePool, dry_run: bool, json: bool) -> Result
             Some("Standard bench press"),
         ),
         (
-            "Deadlift",
+            "deadlift",
             "strength",
             Some("[\"back\", \"legs\"]"),
             Some("barbell"),
@@ -89,7 +97,7 @@ pub async fn handle_init(pool: &SqlitePool, dry_run: bool, json: bool) -> Result
             Some("Standard deadlift"),
         ),
         (
-            "Squat (Barbell)",
+            "squat (barbell)",
             "strength",
             Some("[\"legs\"]"),
             Some("barbell"),
@@ -97,7 +105,7 @@ pub async fn handle_init(pool: &SqlitePool, dry_run: bool, json: bool) -> Result
             Some("Standard back squat"),
         ),
         (
-            "Running",
+            "running",
             "cardio",
             Some("[\"legs\", \"cardiovascular\"]"),
             Some("none"),

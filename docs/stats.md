@@ -7,7 +7,7 @@
 To see your best performances for a specific exercise:
 
 ```bash
-repslog stats prs --exercise "Squat (Barbell)"
+repslog stats prs --exercise "squat (barbell)"
 ```
 
 This will show your max weight, max reps at certain weights, and other relevant milestones.
@@ -21,7 +21,7 @@ Track how much work you're doing over time:
 repslog stats volume --period 30d
 
 # View volume for a specific exercise over the last year
-repslog stats volume --exercise "Bench Press" --period 1y
+repslog stats volume --exercise "bench press" --period 1y
 ```
 
 Volume is computed as `reps × load`. For `load_type=external` exercises, load is `--weight`. For `load_type=body_mass` exercises, load is `--weight` (body mass) plus `--external-load` (vest/belt; negative for assistance). Sets logged with `--no-weight-recorded` contribute **zero** volume.

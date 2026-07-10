@@ -54,7 +54,7 @@ After initialization, you can verify that the default exercises have been loaded
 repslog exercise list
 ```
 
-You should see a table of standard exercises like "Squat (Barbell)", "Pushups", and "Running".
+You should see a table of standard exercises like "squat (barbell)", "pushups", and "running".
 
 ## Database Migrations
 

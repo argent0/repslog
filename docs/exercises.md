@@ -92,6 +92,6 @@ repslog exercise update "ring dip" --equipment rings --load-type body_mass
 Common categories used in `repslog`:
 - **strength**: Traditional weightlifting.
 - **calisthenics**: Bodyweight movements.
-- **cardio**: Running, cycling, swimming, etc.
+- **cardio**: running, cycling, swimming, etc. (all exercise names are lowercase)
 - **flexibility**: Stretching and mobility work.
 - **hiit**: High-intensity interval training.

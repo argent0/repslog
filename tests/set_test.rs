@@ -10,7 +10,7 @@ async fn test_set_numbering() {
     let repo = Repository::new(pool);
 
     let ex_id = repo
-        .add_exercise("Ex1", "cat", None, None, "external", None, false, false)
+        .add_exercise("ex1", "cat", None, None, "external", None, false, false)
         .await
         .unwrap();
     let w_id = repo.create_workout(None, None, None, false).await.unwrap();
@@ -65,7 +65,7 @@ async fn test_set_quick_logic() {
 
     let _ex_id = repo
         .add_exercise(
-            "Pullups",
+            "pullups",
             "calisthenics",
             None,
             None,
@@ -79,7 +79,7 @@ async fn test_set_quick_logic() {
     let w_id = repo.create_workout(None, None, None, false).await.unwrap();
 
     let exercise = repo
-        .find_exercise_by_id_or_name("Pullups")
+        .find_exercise_by_id_or_name("pullups")
         .await
         .unwrap()
         .unwrap();
@@ -117,7 +117,7 @@ async fn test_side_and_unilateral_ordering() {
 
     let ex_id = repo
         .add_exercise(
-            "Bulgarian Split Squat",
+            "bulgarian split squat",
             "strength",
             None,
             None,
@@ -184,7 +184,7 @@ async fn test_set_update_and_weight_only() {
 
     let ex_id = repo
         .add_exercise(
-            "Split Squat",
+            "split squat",
             "strength",
             None,
             None,
@@ -251,7 +251,7 @@ async fn test_phase_eccentric_set() {
 
     let ex_id = repo
         .add_exercise(
-            "Pistol Squat",
+            "pistol squat",
             "calisthenics",
             None,
             None,
@@ -296,7 +296,7 @@ async fn test_set_delete_and_reorder() {
 
     let ex_id = repo
         .add_exercise(
-            "Lunge", "strength", None, None, "external", None, false, false,
+            "lunge", "strength", None, None, "external", None, false, false,
         )
         .await
         .unwrap();

@@ -4,31 +4,52 @@
 
 ## Import a FIT run
 
-`--exercise` is **required** (no default). Use a catalog name such as `Running` (seeded by `repslog init`), or any name — missing exercises are created as cardio.
+The exercise is taken from the FIT file’s `session.sport` field (lowercased). That name **must already exist** in your catalog — import never creates exercises.
 
 ```bash
-repslog import fit path/to/activity.fit --exercise Running
+repslog import fit path/to/activity.fit
+```
+
+For a typical Amazfit/Zepp run, sport is `running`, which matches the exercise seeded by `repslog init`.
+
+Optional override when your catalog name differs from the FIT sport:
+
+```bash
+repslog import fit path/to/activity.fit --exercise "easy run"
 ```
 
 This single command:
 
 1. Parses the FIT session (distance, duration, HR, calories, cadence, elevation, multi-lap splits)
-2. Creates a workout (`--type` defaults to `Run`) with the activity start time
-3. Attaches the named exercise and logs one structured cardio set
-4. Records import provenance (SHA-256 of the file) so the same file is not imported twice
+2. Resolves the exercise from FIT sport (or `--exercise`)
+3. Creates a workout (`--type` defaults to `Run`) with the activity start time
+4. Attaches the exercise and logs one structured cardio set
+5. Records import provenance (SHA-256 of the file) so the same file is not imported twice
 
 Example with the sample Amazfit export:
 
 ```bash
-repslog import fit Zepp20260710164935.fit --exercise Running
+repslog import fit Zepp20260710164935.fit
 repslog workout view <WORKOUT_ID>
+```
+
+### Missing exercise
+
+If the resolved name is not in the catalog, import **aborts** (nothing is written) and suggests:
+
+- Similarly named catalog entries (when any exist)
+- How to add the exercise, then re-import
+
+```bash
+repslog exercise add "running" --category cardio --equipment none --load-type none
+repslog import fit path/to/activity.fit
 ```
 
 ### Options
 
 | Flag | Description |
 |------|-------------|
-| `--exercise <NAME>` | **Required.** Exercise to attach (e.g. `Running`) |
+| `--exercise <NAME>` | Override catalog exercise (default: FIT `session.sport`, lowercased). Must already exist |
 | `--type <LABEL>` | Workout type (default: `Run`) |
 | `--notes <TEXT>` | Notes (import provenance is appended) |
 | `--force` | Allow re-import of a previously imported file (previous workout is kept; hash lock is cleared) |
@@ -38,7 +59,7 @@ repslog workout view <WORKOUT_ID>
 | `--json` | Machine-readable summary |
 
 ```bash
-repslog import fit run.fit --exercise Running --notes "easy evening" \
+repslog import fit run.fit --notes "easy evening" \
   --hr-zone-bounds 120,140,160,175,190 --store-track
 ```
 
@@ -47,6 +68,7 @@ repslog import fit run.fit --exercise Running --notes "easy evening" \
 | FIT field | repslog field |
 |-----------|----------------|
 | session start | `workouts.started_at` |
+| session.sport | catalog exercise name (unless `--exercise`) |
 | total distance / timer time | set distance + duration, workout duration |
 | avg/max heart rate | cardio set HR |
 | calories | `calories_burned` |

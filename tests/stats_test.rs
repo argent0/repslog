@@ -12,7 +12,7 @@ async fn test_stats_prs() {
 
     let ex_id = repo
         .add_exercise(
-            "Squat",
+            "squat",
             "strength",
             None,
             Some("barbell"),
@@ -68,7 +68,7 @@ async fn test_stats_prs() {
     let query = "SELECT e.name, MAX(es.weight_kg) as max_weight, MAX(es.reps) as max_reps FROM exercise_sets es JOIN workout_exercises we ON es.workout_exercise_id = we.id JOIN exercises e ON we.exercise_id = e.id GROUP BY e.name";
     let res = sqlx::query(&query).fetch_one(&repo.pool).await.unwrap();
 
-    assert_eq!(res.get::<String, _>("name"), "Squat");
+    assert_eq!(res.get::<String, _>("name"), "squat");
     assert_eq!(res.get::<f64, _>("max_weight"), 100.0);
     assert_eq!(res.get::<i32, _>("max_reps"), 15);
 }
@@ -80,7 +80,7 @@ async fn test_stats_volume() {
 
     let ex_id = repo
         .add_exercise(
-            "Curl",
+            "curl",
             "strength",
             None,
             Some("dumbbell"),
@@ -136,7 +136,7 @@ async fn test_stats_volume() {
     let query = "SELECT e.name, SUM(es.weight_kg * es.reps) as total_volume FROM exercise_sets es JOIN workout_exercises we ON es.workout_exercise_id = we.id JOIN exercises e ON we.exercise_id = e.id GROUP BY e.name";
     let res = sqlx::query(&query).fetch_one(&repo.pool).await.unwrap();
 
-    assert_eq!(res.get::<String, _>("name"), "Curl");
+    assert_eq!(res.get::<String, _>("name"), "curl");
     assert_eq!(res.get::<f64, _>("total_volume"), 220.0);
 }
 

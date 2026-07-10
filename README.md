@@ -5,7 +5,7 @@ A Linux-first command-line workout tracker designed for flexibility across stren
 ## Features
 - **SQLite Storage:** Local, single-file database (XDG compliant: `~/.local/share/repslog/`).
 - **Cardio First-Class Support:** Detailed tracking for runs (heart rate zones, pace, calories, and structured laps/splits).
-- **FIT Import:** Import running workouts from Zepp/Amazfit/Garmin `.fit` exports (`repslog import fit --exercise Running`).
+- **FIT Import:** Import running workouts from Zepp/Amazfit/Garmin `.fit` exports (`repslog import fit`).
 - **Advanced Strength Training:** Support for RPE, RIR, Effective Reps, Rest-Pause/Cluster sets, and first-class unilateral (left/right) tracking with corrections (update/delete/move).
 - **Scriptable:** Non-interactive friendly; supports reading IDs from `stdin`.
 - **Beautiful Output:** Color-coded tabular views using `comfy-table` with dedicated, runner-friendly displays for cardio workouts including visual HR zone bars and lap breakdowns.
@@ -69,7 +69,7 @@ repslog workout view 1
 ### 4. Adding Exercises to a Workout
 ```bash
 # Add an exercise to workout ID 1
-repslog workout-exercise add 1 "Squat (Barbell)"
+repslog workout-exercise add 1 "squat (barbell)"
 
 # List exercises added to a workout
 repslog workout-exercise list 1
@@ -90,10 +90,10 @@ repslog set add-cluster <we_id> --reps "10,5,5" --weight 100 --rir "0,0,1" --eff
 #### Cardio / Running
 **From a watch FIT file (recommended when available):**
 ```bash
-repslog import fit Zepp20260710164935.fit --exercise Running
+repslog import fit Zepp20260710164935.fit
 repslog workout view <id>
 ```
-`--exercise` is required. See `docs/import.md` for `--store-track`, HR zone bounds, and re-import rules.
+Exercise is taken from FIT `session.sport` (e.g. `running`); it must already exist in the catalog. See `docs/import.md` for `--exercise` override, `--store-track`, HR zone bounds, and re-import rules.
 
 **Manual structured path:** always use `set add-cardio` — do not store distance, pace, HR, or laps only in workout `--notes`.
 ```bash
@@ -150,7 +150,7 @@ repslog stats history --exercise "push up" --days 30
 You can pipe IDs from one command to another for faster logging:
 ```bash
 # Example: Create workout and immediately add an exercise using the piped ID
-repslog workout create --date "2026-04-23 10:00:00" | repslog workout-exercise add "Running"
+repslog workout create --date "2026-04-23 10:00:00" | repslog workout-exercise add "running"
 ```
 
 ### 8. Database Migrations

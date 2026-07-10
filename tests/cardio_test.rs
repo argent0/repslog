@@ -11,7 +11,7 @@ async fn test_cardio_tracking() {
     // 1. Setup Cardio Exercise
     let ex_id = repo
         .add_exercise(
-            "Outdoor Run",
+            "outdoor run",
             "cardio",
             Some("[\"legs\"]"),
             Some("none"),

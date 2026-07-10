@@ -14,10 +14,14 @@ async fn test_handle_init() {
     let repo = Repository::new(pool);
     let exercises = repo.list_exercises(None, None).await.unwrap();
 
-    // Basic exercises should be present
-    assert!(exercises.iter().any(|e| e.name == "Pushups"));
-    assert!(exercises.iter().any(|e| e.name == "Pullups"));
-    assert!(exercises.iter().any(|e| e.name == "Bench Press"));
+    // Basic exercises should be present (lowercase catalog)
+    assert!(exercises.iter().any(|e| e.name == "pushups"));
+    assert!(exercises.iter().any(|e| e.name == "pullups"));
+    assert!(exercises.iter().any(|e| e.name == "bench press"));
+    assert!(exercises.iter().any(|e| e.name == "running"));
+    assert!(exercises
+        .iter()
+        .all(|e| !e.name.chars().any(|c| c.is_uppercase())));
     assert!(exercises.len() >= 11);
 }
 
@@ -59,7 +63,7 @@ async fn test_setup_db_with_custom_path() {
 
         let repo = Repository::new(pool);
         let exercises = repo.list_exercises(None, None).await.unwrap();
-        assert!(exercises.iter().any(|e| e.name == "Pushups"));
+        assert!(exercises.iter().any(|e| e.name == "pushups"));
         assert!(exercises.len() >= 11);
         // pool and repo dropped here
     }

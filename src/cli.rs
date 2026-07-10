@@ -126,17 +126,20 @@ pub enum ConfigAction {
 pub enum ImportAction {
     /// Import a running workout from a Garmin/Zepp/Amazfit FIT file.
     ///
-    /// Creates a workout, attaches the given exercise, and logs one cardio set
+    /// Creates a workout, attaches a catalog exercise, and logs one cardio set
     /// with distance, duration, HR, pace, calories, cadence, and elevation when present.
     ///
+    /// The exercise is taken from FIT session.sport (e.g. "running") unless overridden.
+    /// The catalog exercise must already exist — import will not create it.
+    ///
     /// Example:
-    ///   repslog import fit Zepp20260710164935.fit --exercise Running
+    ///   repslog import fit Zepp20260710164935.fit
     Fit {
         /// Path to the .fit file
         path: String,
-        /// Exercise name to attach (required; e.g. Running). Created as cardio if missing.
+        /// Override exercise name (default: FIT session.sport, lowercased). Must exist in catalog.
         #[arg(long)]
-        exercise: String,
+        exercise: Option<String>,
         /// Workout type label (default: Run)
         #[arg(long = "type")]
         workout_type: Option<String>,
@@ -266,8 +269,8 @@ pub enum WorkoutAction {
     ///   2. `repslog set add`, `set add-cardio`, or `set add-cluster` to log data
     ///
     /// For **Running / Cardio** (strongly recommended):
-    ///   - Use `--type Run` (or "Running")
-    ///   - Add exercise "Running"
+    ///   - Use `--type Run`
+    ///   - Add exercise "running"
     ///   - Use `set add-cardio` with structured --distance, --duration, --avg-heart-rate,
     ///     --max-heart-rate, --pace, --calories, --hr-zones JSON, --laps JSON
     ///   - Do NOT store distance/pace/HR/laps/zones only in --notes (data becomes unqueryable)

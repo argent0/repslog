@@ -172,6 +172,16 @@ pub fn print_id(id: &str, json: bool) {
     }
 }
 
+/// Trim, collapse whitespace, and lowercase. Does not reject uppercase input.
+/// Used by migrations and FIT sport → exercise mapping.
+pub fn normalize_exercise_name_lenient(name: &str) -> String {
+    name.trim()
+        .to_lowercase()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 /// Normalize a custom exercise name for storage: trim and collapse whitespace.
 /// Rejects names containing uppercase letters (Title Case, CamelCase, etc.).
 pub fn normalize_exercise_name(name: &str) -> Result<String, RepslogError> {
@@ -184,7 +194,7 @@ pub fn normalize_exercise_name(name: &str) -> Result<String, RepslogError> {
     if trimmed.chars().any(|c| c.is_uppercase()) {
         return Err(RepslogError::Cli(format!(
             "Exercise names must be lowercase. Use: {}",
-            trimmed.to_lowercase()
+            normalize_exercise_name_lenient(trimmed)
         )));
     }
     Ok(trimmed.split_whitespace().collect::<Vec<_>>().join(" "))

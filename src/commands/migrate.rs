@@ -1,8 +1,9 @@
-use crate::db::{get_all_migrations, get_current_version, run_migrations};
+use crate::db::{get_all_migrations, get_current_version, run_migrations, MigrationOptions};
 use crate::error::Result;
 use colored::*;
 use serde::Serialize;
 use sqlx::SqlitePool;
+use std::io::IsTerminal;
 
 pub async fn handle_migrate(
     pool: &SqlitePool,
@@ -125,7 +126,16 @@ pub async fn handle_migrate(
         }
     }
 
-    let applied = run_migrations(pool, force).await?;
+    let interactive = !json && std::io::stdin().is_terminal();
+    let applied = run_migrations(
+        pool,
+        MigrationOptions {
+            force,
+            interactive,
+            quiet: json,
+        },
+    )
+    .await?;
 
     if json {
         println!(

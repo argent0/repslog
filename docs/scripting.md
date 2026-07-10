@@ -8,7 +8,7 @@ You can pipe the output of one command (which returns an ID) into another. Some 
 
 ### Example: Create Workout and Add Exercise (using xargs)
 ```bash
-repslog workout create --date "2026-04-23 10:00:00" --type "Push" | xargs -I {} repslog workout-exercise add {} "Bench Press"
+repslog workout create --date "2026-04-23 10:00:00" --type "Push" | xargs -I {} repslog workout-exercise add {} "bench press"
 ```
 
 In this example:
@@ -17,7 +17,7 @@ In this example:
 
 ### Example: Add Exercise and Log a Set (direct piping)
 ```bash
-repslog workout-exercise add 1 "Squat (Barbell)" | repslog set add --reps 10 --weight 100 --phase full --rir 1
+repslog workout-exercise add 1 "squat (barbell)" | repslog set add --reps 10 --weight 100 --phase full --rir 1
 ```
 
 In this example:
@@ -89,5 +89,5 @@ When `--dry-run` is used:
 This allows you to test full pipelines:
 ```bash
 # Test a pipeline without making any changes
-repslog workout create --dry-run --date "2026-04-24 10:00:00" | xargs -I {} repslog workout-exercise add {} "Pushups" --dry-run
+repslog workout create --dry-run --date "2026-04-24 10:00:00" | xargs -I {} repslog workout-exercise add {} "pushups" --dry-run
 ```
