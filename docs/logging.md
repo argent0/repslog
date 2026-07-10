@@ -79,9 +79,20 @@ repslog set add-cluster <WE_ID> \
 
 This creates three separate set entries grouped together, making it easy to track the total volume and density of the cluster.
 
+## Sanity checks
+
+Numeric fields on sets and workouts are **hard-failed** against absolute min/max ranges before any database write (same idea as bodylog absolute checks — **no** day-to-day variation layer).
+
+- Defaults live in code; optional file: `~/.config/repslog/config.toml`
+- Create the file: `repslog config generate` (refuses overwrite unless `--force`)
+- Custom path: `repslog --config /path/to/config.toml ...` or `repslog config generate --path ...`
+- Impossible values (e.g. HR 999, negative distance, NaN) abort with a clear error listing every bad field
+
 ## Cardio & Running
 
 Cardio sets support detailed metrics compatible with smart watch exports (like Samsung Health).
+
+**Prefer FIT import when you have a device file:** see [import.md](import.md) for `repslog import fit --exercise Running`. The manual `set add-cardio` path below remains for hand entry.
 
 ```bash
 repslog set add-cardio <WE_ID> \

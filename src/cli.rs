@@ -16,6 +16,10 @@ pub struct Cli {
     #[arg(long, global = true, value_name = "PATH")]
     pub db: Option<String>,
 
+    /// Path to config.toml (default: ~/.config/repslog/config.toml)
+    #[arg(long, global = true, value_name = "PATH")]
+    pub config: Option<String>,
+
     /// Output results in JSON format instead of human-readable tables
     #[arg(long, global = true)]
     pub json: bool,
@@ -79,6 +83,106 @@ pub enum Commands {
         #[arg(long)]
         dry_run: bool,
     },
+    /// Import external activity files (FIT, etc.)
+    Import {
+        #[command(subcommand)]
+        action: ImportAction,
+    },
+    /// Configuration file management
+    Config {
+        #[command(subcommand)]
+        action: ConfigAction,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum ConfigAction {
+    /// Write a config file with default sanity limits.
+    ///
+    /// Default path: ~/.config/repslog/config.toml
+    /// Refuses to overwrite an existing file unless --force is set.
+    ///
+    /// Examples:
+    ///   repslog config generate
+    ///   repslog config generate --path /tmp/repslog.toml
+    ///   repslog config generate --force
+    Generate {
+        /// Output path (default: XDG config location)
+        #[arg(long, value_name = "PATH")]
+        path: Option<String>,
+        /// Overwrite an existing config file
+        #[arg(long)]
+        force: bool,
+    },
+    /// Show the resolved config path and whether a file is loaded
+    Path {
+        /// Path to inspect (default: XDG config location)
+        #[arg(long, value_name = "PATH")]
+        path: Option<String>,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum ImportAction {
+    /// Import a running workout from a Garmin/Zepp/Amazfit FIT file.
+    ///
+    /// Creates a workout, attaches the given exercise, and logs one cardio set
+    /// with distance, duration, HR, pace, calories, cadence, and elevation when present.
+    ///
+    /// Example:
+    ///   repslog import fit Zepp20260710164935.fit --exercise Running
+    Fit {
+        /// Path to the .fit file
+        path: String,
+        /// Exercise name to attach (required; e.g. Running). Created as cardio if missing.
+        #[arg(long)]
+        exercise: String,
+        /// Workout type label (default: Run)
+        #[arg(long = "type")]
+        workout_type: Option<String>,
+        /// Optional notes (import provenance is appended)
+        #[arg(short, long)]
+        notes: Option<String>,
+        /// Allow re-import of a previously imported file (keeps the old workout; drops hash lock)
+        #[arg(long)]
+        force: bool,
+        /// Persist GPS/HR track samples into activity_trackpoints
+        #[arg(long = "store-track")]
+        store_track: bool,
+        /// Optional HR zone upper bounds in bpm for zones 1-5 (comma-separated).
+        /// Example: 120,140,160,175,190 — computes time-in-zone from record samples.
+        #[arg(long = "hr-zone-bounds", value_parser = parse_hr_zone_bounds)]
+        hr_zone_bounds: Option<[f64; 5]>,
+        /// Show what would be imported (no changes)
+        #[arg(long)]
+        dry_run: bool,
+    },
+}
+
+fn parse_hr_zone_bounds(s: &str) -> std::result::Result<[f64; 5], String> {
+    let parts: Vec<&str> = s
+        .split(',')
+        .map(str::trim)
+        .filter(|p| !p.is_empty())
+        .collect();
+    if parts.len() != 5 {
+        return Err(
+            "expected 5 comma-separated bpm bounds for zones 1-5 (e.g. 120,140,160,175,190)".into(),
+        );
+    }
+    let mut out = [0.0; 5];
+    for (i, p) in parts.iter().enumerate() {
+        out[i] = p
+            .parse::<f64>()
+            .map_err(|_| format!("invalid bpm value '{}'", p))?;
+        if out[i] <= 0.0 {
+            return Err(format!("zone bound {} must be > 0", i + 1));
+        }
+        if i > 0 && out[i] < out[i - 1] {
+            return Err("zone bounds must be non-decreasing".into());
+        }
+    }
+    Ok(out)
 }
 
 #[derive(Subcommand)]

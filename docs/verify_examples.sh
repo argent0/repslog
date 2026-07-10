@@ -192,6 +192,36 @@ echo "Testing: piping workout-exercise add to set add (stdin supported)"
 WE_ID=$($REPSLOG workout-exercise add 1 "Dips")
 echo "$WE_ID" | $REPSLOG set add --reps 10 --weight 82 --phase full --rir 0 > /dev/null
 
+# 7. Config generate
+echo "Testing: repslog config generate"
+CFG_PATH="$TMP_DIR/repslog-config.toml"
+$REPSLOG config generate --path "$CFG_PATH" > /dev/null
+$REPSLOG config path --path "$CFG_PATH" > /dev/null
+if $REPSLOG config generate --path "$CFG_PATH" 2>/dev/null; then
+  echo "Expected config generate without --force to fail on existing file" >&2
+  exit 1
+fi
+$REPSLOG config generate --path "$CFG_PATH" --force > /dev/null
+
+# 8. FIT import (running)
+if [ -f "tests/fixtures/Zepp20260710164935.fit" ]; then
+  echo "Testing: repslog import fit --exercise Running"
+  FIT_WID=$($REPSLOG import fit tests/fixtures/Zepp20260710164935.fit --exercise Running)
+  echo "  imported workout ID: $FIT_WID"
+  $REPSLOG workout view "$FIT_WID" > /dev/null
+  echo "Testing: repslog import fit --dry-run"
+  $REPSLOG import fit tests/fixtures/Zepp20260710164935.fit --exercise Running --dry-run > /dev/null || true
+  # dry-run after real import still hits hash unless force; use force dry-run path:
+  $REPSLOG import fit tests/fixtures/Zepp20260710164935.fit --exercise Running --force --dry-run > /dev/null
+  echo "Testing: re-import without --force fails"
+  if $REPSLOG import fit tests/fixtures/Zepp20260710164935.fit --exercise Running 2>/dev/null; then
+    echo "Expected re-import to fail" >&2
+    exit 1
+  fi
+else
+  echo "Skipping FIT import tests (fixture not present)"
+fi
+
 echo "Cleanup: Removing temporary directory $TMP_DIR"
 rm -rf "$TMP_DIR"
 

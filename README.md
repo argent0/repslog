@@ -5,6 +5,7 @@ A Linux-first command-line workout tracker designed for flexibility across stren
 ## Features
 - **SQLite Storage:** Local, single-file database (XDG compliant: `~/.local/share/repslog/`).
 - **Cardio First-Class Support:** Detailed tracking for runs (heart rate zones, pace, calories, and structured laps/splits).
+- **FIT Import:** Import running workouts from Zepp/Amazfit/Garmin `.fit` exports (`repslog import fit --exercise Running`).
 - **Advanced Strength Training:** Support for RPE, RIR, Effective Reps, Rest-Pause/Cluster sets, and first-class unilateral (left/right) tracking with corrections (update/delete/move).
 - **Scriptable:** Non-interactive friendly; supports reading IDs from `stdin`.
 - **Beautiful Output:** Color-coded tabular views using `comfy-table` with dedicated, runner-friendly displays for cardio workouts including visual HR zone bars and lap breakdowns.
@@ -19,6 +20,16 @@ cargo install --path .
 All commands that modify the database support a `--dry-run` flag to preview changes without applying them.
 
 The `--db <PATH>` global option lets you target a specific SQLite file (handy for testing or isolated runs): `repslog --db /tmp/test.db ...`
+
+The `--config <PATH>` option points at a TOML config for sanity ranges (default file: `~/.config/repslog/config.toml`). Generate defaults with:
+
+```bash
+repslog config generate                 # creates ~/.config/repslog/config.toml
+repslog config generate --force         # overwrite
+repslog config generate --path ./my.toml
+```
+
+Without a config file, built-in absolute ranges still apply on every insert/update (hard-fail; no silent clamping).
 
 The `--json` global option makes list/view/stats/create output machine-readable JSON (for use with `jq` etc.).
 
@@ -76,10 +87,17 @@ repslog set add <we_id> --reps 10 --weight 100 --rir 1.0 --effective-reps 5
 repslog set add-cluster <we_id> --reps "10,5,5" --weight 100 --rir "0,0,1" --effective-reps "6,4,3" --rest 15
 ```
 
-#### Cardio / Running (recommended structured path)
-Always log runs with `set add-cardio` — do not store distance, pace, HR, or laps only in workout `--notes`. Includes explicit support for Samsung Health style metrics and structured lap/split tracking.
+#### Cardio / Running
+**From a watch FIT file (recommended when available):**
 ```bash
-# Recommended: structured run tracking with HR zones and laps/splits
+repslog import fit Zepp20260710164935.fit --exercise Running
+repslog workout view <id>
+```
+`--exercise` is required. See `docs/import.md` for `--store-track`, HR zone bounds, and re-import rules.
+
+**Manual structured path:** always use `set add-cardio` — do not store distance, pace, HR, or laps only in workout `--notes`.
+```bash
+# Structured run tracking with HR zones and laps/splits
 repslog set add-cardio <we_id> \
   --distance 7.98 \
   --duration 2701 \

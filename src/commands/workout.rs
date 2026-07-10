@@ -1,14 +1,21 @@
+use crate::app_config::SanityLimits;
 use crate::cli::{WorkoutAction, WorkoutExerciseAction};
 use crate::error::Result;
 use crate::models::HeartRateZones;
 use crate::repository::Repository;
+use crate::sanity::{self, ProposedWorkoutMetrics};
 use crate::utils::{
     format_datetime, format_datetime_opt, format_dry_run_id, format_duration, format_hr_zones_bar,
     format_pace, parse_datetime, parse_id, print_id, print_json, print_table,
 };
 use colored::*;
 
-pub async fn handle_workout(action: WorkoutAction, repo: &Repository, json: bool) -> Result<()> {
+pub async fn handle_workout(
+    action: WorkoutAction,
+    repo: &Repository,
+    limits: &SanityLimits,
+    json: bool,
+) -> Result<()> {
     match action {
         WorkoutAction::Create {
             workout_type,
@@ -182,6 +189,22 @@ pub async fn handle_workout(action: WorkoutAction, repo: &Repository, json: bool
                             }
                         }
 
+                        let mut cadence_samples = Vec::new();
+                        let mut ascent = 0.0f64;
+                        let mut descent = 0.0f64;
+                        for (_, s) in &cardio_sets {
+                            if let Some(c) = s.avg_cadence_spm {
+                                cadence_samples.push(c);
+                            }
+                            ascent += s.total_ascent_m.unwrap_or(0.0);
+                            descent += s.total_descent_m.unwrap_or(0.0);
+                        }
+                        let avg_cadence = if cadence_samples.is_empty() {
+                            None
+                        } else {
+                            Some(cadence_samples.iter().sum::<f64>() / cadence_samples.len() as f64)
+                        };
+
                         data["cardio_summary"] = serde_json::json!({
                             "total_distance_km": total_dist,
                             "total_duration_seconds": total_dur,
@@ -189,6 +212,9 @@ pub async fn handle_workout(action: WorkoutAction, repo: &Repository, json: bool
                             "avg_heart_rate_bpm": if avg_hr > 0.0 { Some(avg_hr.round()) } else { None },
                             "max_heart_rate_bpm": if max_hr > 0.0 { Some(max_hr.round()) } else { None },
                             "total_calories": total_cals,
+                            "avg_cadence_spm": avg_cadence,
+                            "total_ascent_m": if ascent > 0.0 { Some(ascent) } else { None },
+                            "total_descent_m": if descent > 0.0 { Some(descent) } else { None },
                             "hr_zones": if aggregated_zones.z1_seconds + aggregated_zones.z2_seconds + aggregated_zones.z3_seconds + aggregated_zones.z4_seconds + aggregated_zones.z5_seconds > 0 {
                                 Some(&aggregated_zones)
                             } else { None },
@@ -275,6 +301,29 @@ pub async fn handle_workout(action: WorkoutAction, repo: &Repository, json: bool
                                 .to_string()
                         };
 
+                        let mut cadence_samples = Vec::new();
+                        let mut ascent = 0.0;
+                        let mut descent = 0.0;
+                        for (_, s) in &cardio_sets {
+                            if let Some(c) = s.avg_cadence_spm {
+                                cadence_samples.push(c);
+                            }
+                            ascent += s.total_ascent_m.unwrap_or(0.0);
+                            descent += s.total_descent_m.unwrap_or(0.0);
+                        }
+                        let cadence_display = if cadence_samples.is_empty() {
+                            "--".to_string()
+                        } else {
+                            let avg_c =
+                                cadence_samples.iter().sum::<f64>() / cadence_samples.len() as f64;
+                            format!("{:.0} spm", avg_c)
+                        };
+                        let elev_display = if ascent > 0.0 || descent > 0.0 {
+                            format!("↑{:.0}m ↓{:.0}m", ascent, descent)
+                        } else {
+                            "--".to_string()
+                        };
+
                         let mut summary_table = Vec::new();
                         summary_table.push(vec![
                             format!("{:.2} km", total_dist).bold().to_string(),
@@ -282,6 +331,8 @@ pub async fn handle_workout(action: WorkoutAction, repo: &Repository, json: bool
                             format_pace(avg_pace).bold().green().to_string(),
                             hr_display,
                             format!("{} kcal", total_cals).yellow().to_string(),
+                            cadence_display,
+                            elev_display,
                         ]);
                         print_table(
                             vec![
@@ -290,6 +341,8 @@ pub async fn handle_workout(action: WorkoutAction, repo: &Repository, json: bool
                                 "Avg Pace",
                                 "Avg/Max HR",
                                 "Calories",
+                                "Cadence",
+                                "Elev",
                             ],
                             summary_table,
                         );
@@ -315,15 +368,32 @@ pub async fn handle_workout(action: WorkoutAction, repo: &Repository, json: bool
                         if !all_laps.is_empty() {
                             println!("\n{}", "LAPS / SPLITS".bold().yellow());
                             let mut lap_rows = Vec::new();
+                            let show_lap_hr =
+                                all_laps.iter().any(|l| l.avg_heart_rate_bpm.is_some());
                             for lap in all_laps {
-                                lap_rows.push(vec![
+                                let mut row = vec![
                                     lap.lap_number.to_string(),
                                     format!("{:.2} km", lap.distance_km),
                                     format_duration(lap.duration_seconds),
                                     format_pace(lap.pace_min_per_km).green().to_string(),
-                                ]);
+                                ];
+                                if show_lap_hr {
+                                    row.push(
+                                        lap.avg_heart_rate_bpm
+                                            .map(|h| format!("{:.0}", h))
+                                            .unwrap_or_else(|| "--".into()),
+                                    );
+                                }
+                                lap_rows.push(row);
                             }
-                            print_table(vec!["Lap", "Distance", "Time", "Pace"], lap_rows);
+                            if show_lap_hr {
+                                print_table(
+                                    vec!["Lap", "Distance", "Time", "Pace", "Avg HR"],
+                                    lap_rows,
+                                );
+                            } else {
+                                print_table(vec!["Lap", "Distance", "Time", "Pace"], lap_rows);
+                            }
                         }
                     }
 
@@ -472,6 +542,13 @@ pub async fn handle_workout(action: WorkoutAction, repo: &Repository, json: bool
         } => {
             let id = parse_id(&workout_id, dry_run)?;
             let date = date.as_deref().map(parse_datetime).transpose()?;
+            sanity::validate_workout_metrics(
+                &ProposedWorkoutMetrics {
+                    duration_minutes: duration,
+                    overall_feeling: feeling,
+                },
+                limits,
+            )?;
             repo.update_workout(
                 id,
                 workout_type.as_deref(),

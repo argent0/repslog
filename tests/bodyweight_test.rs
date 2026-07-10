@@ -52,6 +52,7 @@ async fn test_bodyweight_set_requires_weight() {
             dry_run: false,
         },
         &repo,
+        &repslog::app_config::SanityLimits::default(),
         false,
     )
     .await
@@ -109,6 +110,7 @@ async fn test_bodyweight_set_with_external_load() {
             dry_run: false,
         },
         &repo,
+        &repslog::app_config::SanityLimits::default(),
         false,
     )
     .await

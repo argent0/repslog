@@ -1,5 +1,8 @@
 use crate::error::{RepslogError, Result};
-use crate::models::{Exercise, ExerciseSet, HeartRateZones, Lap, Workout, WorkoutExercise};
+use crate::models::{
+    ActivityImport, Exercise, ExerciseSet, HeartRateZones, Lap, Trackpoint, Workout,
+    WorkoutExercise,
+};
 use crate::utils::parse_datetime;
 use sqlx::sqlite::SqlitePool;
 use sqlx::types::Json;
@@ -339,6 +342,9 @@ impl Repository {
         pace: Option<f64>,
         calories: Option<i32>,
         laps: Option<Json<Vec<Lap>>>,
+        avg_cadence_spm: Option<f64>,
+        total_ascent_m: Option<f64>,
+        total_descent_m: Option<f64>,
         dry_run: bool,
     ) -> Result<i64> {
         if dry_run {
@@ -347,8 +353,9 @@ impl Repository {
         let res = sqlx::query("INSERT INTO exercise_sets (
             workout_exercise_id, set_number, reps, weight_kg, external_load_kg, duration_seconds, distance_km, rpe, rir, 
             effective_reps, cluster_id, rest_seconds, notes, side, phase, avg_heart_rate_bpm, max_heart_rate_bpm, 
-            heart_rate_zones, avg_pace_min_per_km, calories_burned, laps
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+            heart_rate_zones, avg_pace_min_per_km, calories_burned, laps,
+            avg_cadence_spm, total_ascent_m, total_descent_m
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
             .bind(workout_exercise_id)
             .bind(set_number)
             .bind(reps)
@@ -370,9 +377,109 @@ impl Repository {
             .bind(pace)
             .bind(calories)
             .bind(laps)
+            .bind(avg_cadence_spm)
+            .bind(total_ascent_m)
+            .bind(total_descent_m)
             .execute(&self.pool)
             .await?;
         Ok(res.last_insert_rowid())
+    }
+
+    // --- Activity imports (FIT etc.) ---
+    pub async fn get_import_by_hash(&self, file_sha256: &str) -> Result<Option<ActivityImport>> {
+        Ok(sqlx::query_as::<_, ActivityImport>(
+            "SELECT * FROM activity_imports WHERE file_sha256 = ?",
+        )
+        .bind(file_sha256)
+        .fetch_optional(&self.pool)
+        .await?)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn insert_activity_import(
+        &self,
+        workout_id: i64,
+        source_format: &str,
+        source_filename: Option<&str>,
+        file_sha256: &str,
+        device_name: Option<&str>,
+        manufacturer_id: Option<i64>,
+        product_id: Option<i64>,
+        fit_sport: Option<i64>,
+        fit_sub_sport: Option<i64>,
+        dry_run: bool,
+    ) -> Result<i64> {
+        if dry_run {
+            return self.get_next_id("activity_imports").await;
+        }
+        let res = sqlx::query(
+            "INSERT INTO activity_imports (
+                workout_id, source_format, source_filename, file_sha256,
+                device_name, manufacturer_id, product_id, fit_sport, fit_sub_sport
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(workout_id)
+        .bind(source_format)
+        .bind(source_filename)
+        .bind(file_sha256)
+        .bind(device_name)
+        .bind(manufacturer_id)
+        .bind(product_id)
+        .bind(fit_sport)
+        .bind(fit_sub_sport)
+        .execute(&self.pool)
+        .await?;
+        Ok(res.last_insert_rowid())
+    }
+
+    pub async fn delete_activity_import_by_hash(&self, file_sha256: &str) -> Result<()> {
+        sqlx::query("DELETE FROM activity_imports WHERE file_sha256 = ?")
+            .bind(file_sha256)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn insert_trackpoints_batch(
+        &self,
+        exercise_set_id: i64,
+        points: &[Trackpoint],
+        dry_run: bool,
+    ) -> Result<()> {
+        if dry_run || points.is_empty() {
+            return Ok(());
+        }
+        let mut tx = self.pool.begin().await?;
+        for p in points {
+            sqlx::query(
+                "INSERT INTO activity_trackpoints (
+                    exercise_set_id, recorded_at, latitude, longitude, altitude_m,
+                    heart_rate_bpm, cadence_spm, distance_km, speed_m_s
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            )
+            .bind(exercise_set_id)
+            .bind(&p.recorded_at)
+            .bind(p.latitude)
+            .bind(p.longitude)
+            .bind(p.altitude_m)
+            .bind(p.heart_rate_bpm)
+            .bind(p.cadence_spm)
+            .bind(p.distance_km)
+            .bind(p.speed_m_s)
+            .execute(&mut *tx)
+            .await?;
+        }
+        tx.commit().await?;
+        Ok(())
+    }
+
+    pub async fn count_trackpoints(&self, exercise_set_id: i64) -> Result<i64> {
+        let row: (i64,) =
+            sqlx::query_as("SELECT COUNT(*) FROM activity_trackpoints WHERE exercise_set_id = ?")
+                .bind(exercise_set_id)
+                .fetch_one(&self.pool)
+                .await?;
+        Ok(row.0)
     }
 
     pub async fn list_sets(&self, workout_exercise_id: i64) -> Result<Vec<ExerciseSet>> {

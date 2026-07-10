@@ -1,16 +1,23 @@
+use crate::app_config::SanityLimits;
 use crate::bodyweight;
 use crate::cli::SetAction;
 use crate::error::{RepslogError, Result};
 use crate::models::Lap;
 use crate::phase::{self, format_phase_label};
 use crate::repository::Repository;
+use crate::sanity::{self, ProposedSetMetrics};
 use crate::utils::{
     format_datetime_opt, format_dry_run_id, format_duration, format_pace, parse_id, print_id,
     print_json, print_table, read_stdin,
 };
 use sqlx::types::Json;
 
-pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Result<()> {
+pub async fn handle_set(
+    action: SetAction,
+    repo: &Repository,
+    limits: &SanityLimits,
+    json: bool,
+) -> Result<()> {
     match action {
         SetAction::Add {
             workout_exercise_id,
@@ -75,6 +82,28 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
             )
             .await?;
 
+            sanity::validate_set_metrics(
+                &ProposedSetMetrics {
+                    reps,
+                    weight_kg: resolved_weight,
+                    external_load_kg: resolved_external_load,
+                    distance_km: distance,
+                    duration_seconds: duration,
+                    rpe,
+                    rir,
+                    effective_reps,
+                    rest_seconds,
+                    avg_heart_rate_bpm: avg_heart_rate,
+                    max_heart_rate_bpm: max_heart_rate,
+                    avg_pace_min_per_km: pace,
+                    calories_burned: calories,
+                    heart_rate_zones: hr_zones.clone(),
+                    laps: laps.as_ref().map(|l| l.0.clone()),
+                    ..Default::default()
+                },
+                limits,
+            )?;
+
             let set_number = if dry_run && id_str.starts_with("DRY-RUN-") {
                 1 // If it's a dry-run workout exercise, start with set 1
             } else {
@@ -104,6 +133,9 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                     pace,
                     calories,
                     laps.map(|l| Json(l.0)),
+                    None,
+                    None,
+                    None,
                     dry_run,
                 )
                 .await?;
@@ -149,6 +181,21 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                 validate_laps(&laps_wrapper.0, Some(distance), Some(duration as u32))?;
             }
 
+            sanity::validate_set_metrics(
+                &ProposedSetMetrics {
+                    distance_km: Some(distance),
+                    duration_seconds: Some(duration),
+                    avg_heart_rate_bpm: Some(avg_heart_rate),
+                    max_heart_rate_bpm: Some(max_heart_rate),
+                    avg_pace_min_per_km: Some(pace),
+                    calories_burned: Some(calories),
+                    heart_rate_zones: Some(hr_zones.clone()),
+                    laps: laps.as_ref().map(|l| l.0.clone()),
+                    ..Default::default()
+                },
+                limits,
+            )?;
+
             let set_number = if dry_run && id_str.starts_with("DRY-RUN-") {
                 1
             } else {
@@ -178,6 +225,9 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                     Some(pace),
                     Some(calories),
                     laps.map(|l| Json(l.0)),
+                    None,
+                    None,
+                    None,
                     dry_run,
                 )
                 .await?;
@@ -271,12 +321,25 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                 .zip(eff_list)
                 .enumerate()
             {
+                let rest = if i > 0 { Some(rest_seconds) } else { None };
+                sanity::validate_set_metrics(
+                    &ProposedSetMetrics {
+                        reps: Some(r),
+                        weight_kg: resolved_weight,
+                        external_load_kg: resolved_external_load,
+                        rir: Some(ri),
+                        effective_reps: Some(eff),
+                        rest_seconds: rest,
+                        ..Default::default()
+                    },
+                    limits,
+                )?;
+
                 let set_number = if dry_run && id_str.starts_with("DRY-RUN-") {
                     (i + 1) as i32
                 } else {
                     repo.get_next_set_number(id).await?
                 };
-                let rest = if i > 0 { Some(rest_seconds) } else { None };
 
                 let set_id = repo
                     .add_set(
@@ -295,6 +358,9 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                         notes.as_deref(),
                         side.as_deref().map(|s| s.to_lowercase()).as_deref(),
                         resolved_phase,
+                        None,
+                        None,
+                        None,
                         None,
                         None,
                         None,
@@ -350,6 +416,9 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                     avg_pace_min_per_km: Option<f64>,
                     calories_burned: Option<i32>,
                     laps: Option<sqlx::types::Json<Vec<crate::models::Lap>>>,
+                    avg_cadence_spm: Option<f64>,
+                    total_ascent_m: Option<f64>,
+                    total_descent_m: Option<f64>,
                     created_at: Option<String>,
                 }
                 let outs: Vec<SetOut> = sets
@@ -378,6 +447,9 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                         avg_pace_min_per_km: s.avg_pace_min_per_km,
                         calories_burned: s.calories_burned,
                         laps: s.laps.clone(),
+                        avg_cadence_spm: s.avg_cadence_spm,
+                        total_ascent_m: s.total_ascent_m,
+                        total_descent_m: s.total_descent_m,
                         created_at: format_datetime_opt(&s.created_at),
                     })
                     .collect();
@@ -516,6 +588,34 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                 .await?;
             let side_norm = side.as_deref().map(|s| s.to_lowercase());
             let phase_norm = phase.as_deref().map(phase::normalize_phase).transpose()?;
+
+            // Validate the post-update view of numeric fields (patch merges with existing).
+            let merged = ProposedSetMetrics {
+                reps: reps.or(existing.reps),
+                weight_kg: if clear_weight {
+                    None
+                } else {
+                    resolved_weight.or(existing.weight_kg)
+                },
+                external_load_kg: resolved_external_load.or(existing.external_load_kg),
+                distance_km: distance.or(existing.distance_km),
+                duration_seconds: duration.or(existing.duration_seconds),
+                rpe: rpe.or(existing.rpe),
+                rir: rir.or(existing.rir),
+                effective_reps: effective_reps.or(existing.effective_reps),
+                rest_seconds: rest_seconds.or(existing.rest_seconds),
+                avg_heart_rate_bpm: existing.avg_heart_rate_bpm,
+                max_heart_rate_bpm: existing.max_heart_rate_bpm,
+                avg_pace_min_per_km: existing.avg_pace_min_per_km,
+                calories_burned: existing.calories_burned,
+                avg_cadence_spm: existing.avg_cadence_spm,
+                total_ascent_m: existing.total_ascent_m,
+                total_descent_m: existing.total_descent_m,
+                heart_rate_zones: existing.heart_rate_zones.as_ref().map(|j| j.0.clone()),
+                laps: existing.laps.as_ref().map(|j| j.0.clone()),
+            };
+            sanity::validate_set_metrics(&merged, limits)?;
+
             repo.update_set(
                 id,
                 reps,
@@ -698,15 +798,27 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
             let mut created = Vec::new();
             for &sd in &sides {
                 for (i, &r) in reps_list.iter().enumerate() {
+                    let ri = rir_list.get(i).and_then(|v| *v);
+                    let eff = eff_list.get(i).and_then(|v| *v);
+                    let rest = if i > 0 { rest_seconds } else { None };
+                    sanity::validate_set_metrics(
+                        &ProposedSetMetrics {
+                            reps: Some(r),
+                            weight_kg: resolved_weight,
+                            external_load_kg: resolved_external_load,
+                            rir: ri,
+                            effective_reps: eff,
+                            rest_seconds: rest,
+                            ..Default::default()
+                        },
+                        limits,
+                    )?;
                     let set_number = if dry_run && id_str.starts_with("DRY-RUN-") {
                         // approximate; real sequencing happens in non-dry
                         (i + 1) as i32
                     } else {
                         repo.get_next_set_number(id).await?
                     };
-                    let ri = rir_list.get(i).and_then(|v| *v);
-                    let eff = eff_list.get(i).and_then(|v| *v);
-                    let rest = if i > 0 { rest_seconds } else { None };
 
                     let set_id = repo
                         .add_set(
@@ -725,6 +837,9 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                             notes.as_deref(),
                             Some(sd),
                             resolved_phase,
+                            None,
+                            None,
+                            None,
                             None,
                             None,
                             None,
@@ -800,6 +915,16 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                                 bodyweight::uses_body_mass(&ex),
                             )?
                         };
+                    sanity::validate_set_metrics(
+                        &ProposedSetMetrics {
+                            reps,
+                            weight_kg: resolved_weight,
+                            external_load_kg: resolved_external_load,
+                            duration_seconds: duration,
+                            ..Default::default()
+                        },
+                        limits,
+                    )?;
                     let set_id = repo
                         .add_set(
                             we_id,
@@ -817,6 +942,9 @@ pub async fn handle_set(action: SetAction, repo: &Repository, json: bool) -> Res
                             notes.as_deref(),
                             None,
                             resolved_phase,
+                            None,
+                            None,
+                            None,
                             None,
                             None,
                             None,

@@ -8,9 +8,12 @@ Welcome to the official documentation for `repslog`, a Linux-first command-line 
 2. [Managing Exercises](exercises.md) - How to list, search, and add exercises.
 3. [Workouts & Sessions](workouts.md) - Creating and managing your training sessions.
 4. [Logging Sets](logging.md) - Detailed guide on logging strength, cluster, and cardio sets.
-5. [Statistics & Progress](stats.md) - Tracking your personal records and volume.
-6. [Database & Migrations](migrations.md) - Understanding the data storage and schema evolution.
-7. [Scripting & Automation](scripting.md) - Using `repslog` in scripts and with pipes.
+5. [Importing Activities](import.md) - Import running workouts from FIT files (Zepp, Amazfit, Garmin).
+6. [Statistics & Progress](stats.md) - Tracking your personal records and volume.
+
+Sanity ranges for inserts: see [logging.md](logging.md#sanity-checks) (`repslog config generate`).
+7. [Database & Migrations](migrations.md) - Understanding the data storage and schema evolution.
+8. [Scripting & Automation](scripting.md) - Using `repslog` in scripts and with pipes.
 
 ## Core Philosophy
 

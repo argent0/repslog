@@ -53,12 +53,16 @@ async fn test_cardio_tracking() {
             distance_km: 1.0,
             duration_seconds: 312,
             pace_min_per_km: 5.2,
+            avg_heart_rate_bpm: None,
+            max_heart_rate_bpm: None,
         },
         Lap {
             lap_number: 2,
             distance_km: 1.0,
             duration_seconds: 312,
             pace_min_per_km: 5.2,
+            avg_heart_rate_bpm: None,
+            max_heart_rate_bpm: None,
         },
     ];
 
@@ -85,6 +89,9 @@ async fn test_cardio_tracking() {
             pace,
             calories,
             Some(Json(laps.clone())),
+            Some(160.0),
+            Some(42.0),
+            Some(38.0),
             false,
         )
         .await
@@ -106,4 +113,7 @@ async fn test_cardio_tracking() {
     assert_eq!(s.distance_km, distance);
     assert_eq!(s.duration_seconds, duration);
     assert_eq!(s.laps.as_ref().map(|j| j.0.clone()), Some(laps));
+    assert_eq!(s.avg_cadence_spm, Some(160.0));
+    assert_eq!(s.total_ascent_m, Some(42.0));
+    assert_eq!(s.total_descent_m, Some(38.0));
 }

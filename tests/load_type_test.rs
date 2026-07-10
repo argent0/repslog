@@ -65,6 +65,7 @@ async fn test_ring_dip_with_rings_equipment_requires_body_mass() {
             dry_run: false,
         },
         &repo,
+        &repslog::app_config::SanityLimits::default(),
         false,
     )
     .await
