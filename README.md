@@ -123,9 +123,10 @@ repslog set quick 1 "pull up" --reps 8 --weight 82
 
 **New: Beautiful Cardio Display**
 When you view a cardio workout, repslog now provides a high-signal summary:
-- **Aggregated Totals:** Distance, Time, Pace, Avg/Max HR, and Calories.
+- **Aggregated Totals:** Distance, Time, Pace, Avg/Max HR, Calories, Cadence, and Elevation.
 - **Visual HR Zones:** A color-coded bar (Cyan/Green/Yellow/Magenta/Red) showing distribution across Z1-Z5 with percentages.
 - **Lap Table:** Clear breakdown of every split with distance, time, and pace.
+- **Track Metrics (FIT imports):** Moving time, pace distribution, best efforts, HR drift, GAP, and route shape from stored GPS/HR samples; computed km splits when device laps are absent.
 
 ### 6. Updating & Stats
 ```bash

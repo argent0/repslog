@@ -159,6 +159,22 @@ repslog workout view <WORKOUT_ID>
 
 For cardio workouts, this view includes automated summaries, pace calculations, and heart rate zone bars.
 
+When a cardio set was imported from FIT (or otherwise has rows in `activity_trackpoints`), `workout view` also shows a **TRACK METRICS** section derived on the fly from the sample stream:
+
+- **Moving vs stopped time** and **moving pace**
+- Pace distribution (median / range / CV) and **best efforts** (400 m, 1 km, 1 mi, 5 min, 10 min)
+- Cadence stats and estimated stride (device cadence units as stored)
+- Elevation min/max, smoothed ascent/descent, grade-adjusted pace (GAP), VAM when climb is meaningful
+- HR min and cardiac drift %; track-recomputed zones only when stored zones are empty and DOB was snapshotted on the set
+- Route summary (loop vs point-to-point, GPS path length, start–end gap)
+
+If the device did not store multi-lap splits, a **COMPUTED KM SPLITS** table is shown from the distance series. Device `laps` still take priority when present.
+
+JSON (`repslog workout view <id> --json`) exposes the same payload as:
+
+- `cardio_summary.track` — metrics for the first cardio set that has trackpoints
+- `exercises[].sets[].track_metrics` — per-set metrics (source of truth)
+
 When logging unilateral work with `--side`, the view groups or clearly labels Left/Right sets, shows per-side rep totals, and respects logical ordering. Exercise-level notes (on the workout-exercise) and goal_reps (if set) are also displayed with actual vs goal progress.
 
 ## Updating a Workout

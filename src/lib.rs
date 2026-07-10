@@ -12,6 +12,7 @@ pub mod models;
 pub mod phase;
 pub mod repository;
 pub mod sanity;
+pub mod track_metrics;
 pub mod utils;
 
 pub use error::Result;

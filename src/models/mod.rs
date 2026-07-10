@@ -115,7 +115,7 @@ pub struct ActivityImport {
     pub imported_at: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Trackpoint {
     pub recorded_at: String,
     pub latitude: Option<f64>,

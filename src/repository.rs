@@ -487,6 +487,20 @@ impl Repository {
         Ok(row.0)
     }
 
+    pub async fn list_trackpoints(&self, exercise_set_id: i64) -> Result<Vec<Trackpoint>> {
+        let rows = sqlx::query_as::<_, Trackpoint>(
+            "SELECT recorded_at, latitude, longitude, altitude_m, heart_rate_bpm,
+                    cadence_spm, distance_km, speed_m_s
+             FROM activity_trackpoints
+             WHERE exercise_set_id = ?
+             ORDER BY recorded_at, id",
+        )
+        .bind(exercise_set_id)
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(rows)
+    }
+
     pub async fn list_sets(&self, workout_exercise_id: i64) -> Result<Vec<ExerciseSet>> {
         // Logical order: left sets first, then right, then both/unspecified, then by set_number.
         // This supports clean unilateral display without changing the meaning of set_number.

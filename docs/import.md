@@ -83,6 +83,10 @@ repslog import fit run.fit --no-bodylog
 | laps (≥2) | set `laps` JSON (single full-activity lap is skipped) |
 | record stream | `activity_trackpoints` (always stored when present) |
 
+Track samples are not summarized into extra set columns at import time. On `repslog workout view`, they are loaded and used to compute moving time, pace dynamics, best efforts, synthetic km splits (when device laps are missing), HR drift, elevation/GAP, and route geometry. See [workouts.md](workouts.md#viewing-workout-details).
+
+Cadence is stored and displayed in **device units** (many FIT files report running cadence per foot, often ~half of total steps/min).
+
 ### Heart rate zones
 
 Priority when filling `exercise_sets.heart_rate_zones` (seconds in Z1–Z5):

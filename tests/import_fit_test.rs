@@ -4,6 +4,7 @@ use repslog::commands::import;
 use repslog::db::setup_test_db;
 use repslog::fit::{parse_fit_path, ImportPlan};
 use repslog::repository::Repository;
+use repslog::track_metrics::{compute, compute_with_zones, ZoneRecomputeContext};
 use std::path::PathBuf;
 
 fn fixture_path() -> PathBuf {
@@ -106,6 +107,99 @@ async fn import_fit_creates_running_workout() {
     .await;
     assert!(err.is_err());
     assert!(format!("{}", err.unwrap_err()).contains("already imported"));
+}
+
+#[tokio::test]
+async fn track_metrics_from_imported_fit() {
+    let path = fixture_path();
+    if !path.exists() {
+        eprintln!("fixture missing: {:?}", path);
+        return;
+    }
+
+    let pool = setup_test_db().await.unwrap();
+    let repo = Repository::new(pool);
+
+    let _ = repo
+        .add_exercise(
+            "running",
+            "cardio",
+            Some("[\"legs\", \"cardiovascular\"]"),
+            Some("none"),
+            "none",
+            Some("Outdoor or treadmill run"),
+            false,
+            false,
+        )
+        .await
+        .unwrap();
+
+    let limits = SanityLimits::default();
+    import::handle_import(
+        ImportAction::Fit {
+            path: path.to_string_lossy().to_string(),
+            exercise: None,
+            workout_type: Some("Run".into()),
+            notes: None,
+            force: false,
+            hr_zone_bounds: None,
+            no_bodylog: true,
+            dry_run: false,
+        },
+        &repo,
+        &limits,
+        true,
+    )
+    .await
+    .unwrap();
+
+    let workouts = repo.list_workouts(10, None).await.unwrap();
+    let w = &workouts[0];
+    let wes = repo.list_workout_exercises(w.id).await.unwrap();
+    let sets = repo.list_sets(wes[0].0.id).await.unwrap();
+    let s = &sets[0];
+
+    let n = repo.count_trackpoints(s.id).await.unwrap();
+    let points = repo.list_trackpoints(s.id).await.unwrap();
+    assert_eq!(points.len() as i64, n);
+    assert!(n > 1000, "expected many trackpoints, got {}", n);
+
+    let m = compute(&points, s.distance_km).expect("track metrics");
+    assert_eq!(m.sample_count, points.len());
+    assert!(m.elapsed_seconds > 0);
+    assert!(m.moving_seconds <= m.elapsed_seconds + 5);
+    assert!(m.moving_seconds <= 2808 + 60);
+    if let Some(ref route) = m.route {
+        if let Some(gps) = route.gps_distance_km {
+            assert!(
+                (gps - 8.027).abs() < 0.5,
+                "gps distance {} not near 8.027",
+                gps
+            );
+        }
+    }
+    assert!(m.elev_min_m.is_some() || m.elev_max_m.is_some() || m.ascent_m.is_some());
+    assert!(
+        m.best_efforts.iter().any(|b| b.label == "1 km"),
+        "expected 1 km best effort: {:?}",
+        m.best_efforts
+    );
+    assert!(
+        m.synthetic_km_splits.iter().filter(|k| !k.partial).count() >= 7,
+        "expected ~8 km splits, got {:?}",
+        m.synthetic_km_splits.len()
+    );
+
+    // Zone recompute only when DOB snapshot present (none with --no-bodylog)
+    let ctx = ZoneRecomputeContext {
+        date_of_birth: s.date_of_birth.clone(),
+        resting_hr_bpm: s.resting_hr_bpm,
+        activity_date: Some(w.started_at[..10].to_string()),
+    };
+    let m2 = compute_with_zones(&points, s.distance_km, &ctx).unwrap();
+    if s.date_of_birth.is_none() {
+        assert!(m2.hr_zones_recomputed.is_none());
+    }
 }
 
 #[tokio::test]

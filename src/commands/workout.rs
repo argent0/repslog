@@ -1,9 +1,10 @@
 use crate::app_config::SanityLimits;
 use crate::cli::{WorkoutAction, WorkoutExerciseAction};
 use crate::error::Result;
-use crate::models::HeartRateZones;
+use crate::models::{ExerciseSet, HeartRateZones};
 use crate::repository::Repository;
 use crate::sanity::{self, ProposedWorkoutMetrics};
+use crate::track_metrics::{compute_with_zones, RouteKind, TrackMetrics, ZoneRecomputeContext};
 use crate::utils::{
     format_datetime, format_datetime_opt, format_dry_run_id, format_duration, format_hr_zones_bar,
     format_pace, parse_datetime, parse_id, print_id, print_json, print_table,
@@ -93,7 +94,7 @@ pub async fn handle_workout(
                 if json {
                     let exercises = repo.list_workout_exercises(workout_id).await?;
                     // Collect cardio for summary (dupe of below logic for json path)
-                    let mut cardio_sets: Vec<(String, crate::models::ExerciseSet)> = Vec::new();
+                    let mut cardio_sets: Vec<(String, ExerciseSet)> = Vec::new();
                     for (we, name, _equipment) in &exercises {
                         let sets = repo.list_sets(we.id).await?;
                         for s in sets {
@@ -106,22 +107,34 @@ pub async fn handle_workout(
                         }
                     }
 
+                    let activity_date = activity_date_prefix(&w.started_at);
+                    let mut primary_track: Option<TrackMetrics> = None;
+
                     let mut ex_list = Vec::new();
                     for (we, name, _equipment) in &exercises {
                         let sets = repo.list_sets(we.id).await?;
-                        let sets_json: Vec<serde_json::Value> = sets
-                            .iter()
-                            .map(|s| {
-                                let mut v = serde_json::to_value(s).expect("set serializes");
-                                if let Some(obj) = v.as_object_mut() {
+                        let mut sets_json = Vec::new();
+                        for s in &sets {
+                            let mut v = serde_json::to_value(s).expect("set serializes");
+                            if let Some(obj) = v.as_object_mut() {
+                                obj.insert(
+                                    "created_at".to_string(),
+                                    serde_json::json!(format_datetime_opt(&s.created_at)),
+                                );
+                                if let Some(tm) =
+                                    track_metrics_for_set(repo, s, &activity_date).await?
+                                {
+                                    if primary_track.is_none() {
+                                        primary_track = Some(tm.clone());
+                                    }
                                     obj.insert(
-                                        "created_at".to_string(),
-                                        serde_json::json!(format_datetime_opt(&s.created_at)),
+                                        "track_metrics".to_string(),
+                                        serde_json::to_value(&tm).expect("track metrics serialize"),
                                     );
                                 }
-                                v
-                            })
-                            .collect();
+                            }
+                            sets_json.push(v);
+                        }
                         ex_list.push(serde_json::json!({
                             "id": we.id,
                             "exercise_name": name,
@@ -219,6 +232,7 @@ pub async fn handle_workout(
                                 Some(&aggregated_zones)
                             } else { None },
                             "laps": if laps_all.is_empty() { None } else { Some(laps_all) },
+                            "track": primary_track,
                         });
                     }
 
@@ -393,6 +407,35 @@ pub async fn handle_workout(
                                 );
                             } else {
                                 print_table(vec!["Lap", "Distance", "Time", "Pace"], lap_rows);
+                            }
+                        }
+
+                        // Trackpoint-derived metrics (first cardio set with a record stream)
+                        let activity_date = activity_date_prefix(&w.started_at);
+                        for (_, s) in &cardio_sets {
+                            if let Some(tm) = track_metrics_for_set(repo, s, &activity_date).await?
+                            {
+                                let has_device_laps =
+                                    s.laps.as_ref().map(|j| !j.0.is_empty()).unwrap_or(false);
+                                let stored_zones_empty = s
+                                    .heart_rate_zones
+                                    .as_ref()
+                                    .map(|z| {
+                                        z.0.z1_seconds
+                                            + z.0.z2_seconds
+                                            + z.0.z3_seconds
+                                            + z.0.z4_seconds
+                                            + z.0.z5_seconds
+                                            == 0
+                                    })
+                                    .unwrap_or(true);
+                                print_track_metrics(
+                                    &tm,
+                                    s.distance_km,
+                                    stored_zones_empty,
+                                    !has_device_laps,
+                                );
+                                break;
                             }
                         }
                     }
@@ -579,6 +622,211 @@ pub async fn handle_workout(
         }
     }
     Ok(())
+}
+
+fn activity_date_prefix(started_at: &str) -> String {
+    started_at.get(..10).unwrap_or(started_at).to_string()
+}
+
+async fn track_metrics_for_set(
+    repo: &Repository,
+    set: &ExerciseSet,
+    activity_date: &str,
+) -> Result<Option<TrackMetrics>> {
+    let points = repo.list_trackpoints(set.id).await?;
+    if points.is_empty() {
+        return Ok(None);
+    }
+    let ctx = ZoneRecomputeContext {
+        date_of_birth: set.date_of_birth.clone(),
+        resting_hr_bpm: set.resting_hr_bpm,
+        activity_date: Some(activity_date.to_string()),
+    };
+    Ok(compute_with_zones(&points, set.distance_km, &ctx))
+}
+
+fn print_track_metrics(
+    m: &TrackMetrics,
+    device_distance_km: Option<f64>,
+    stored_zones_empty: bool,
+    show_synthetic_splits: bool,
+) {
+    println!("\n{}", "TRACK METRICS".bold().yellow());
+    println!("  Samples  {}", m.sample_count);
+
+    let moving_pace = m
+        .moving_pace_min_per_km
+        .map(|p| format_pace(p).green().to_string())
+        .unwrap_or_else(|| "--".into());
+    println!(
+        "  Moving   {}  (stopped {})    Moving pace  {}",
+        format_duration(m.moving_seconds),
+        format_duration(m.stopped_seconds),
+        moving_pace
+    );
+
+    if let Some(ref pace) = m.pace {
+        let cv = m
+            .pace_cv
+            .map(|c| format!("  · CV {:.0}%", c * 100.0))
+            .unwrap_or_default();
+        println!(
+            "  Pace     med {}  · {}–{}{}",
+            format_pace(pace.median).green(),
+            format_pace(pace.min),
+            format_pace(pace.max),
+            cv
+        );
+    }
+
+    if !m.best_efforts.is_empty() {
+        let parts: Vec<String> = m
+            .best_efforts
+            .iter()
+            .take(4)
+            .map(|b| {
+                if let Some(dur) = b.duration_seconds {
+                    if b.label.contains("min") {
+                        format!(
+                            "{} {}",
+                            b.label,
+                            b.distance_km
+                                .map(|d| format!("{:.2} km", d))
+                                .unwrap_or_else(|| "--".into())
+                        )
+                    } else {
+                        format!("{} {}", b.label, format_duration(dur))
+                    }
+                } else {
+                    b.label.clone()
+                }
+            })
+            .collect();
+        println!("  Best     {}", parts.join("  ·  "));
+    }
+
+    if let Some(ref cad) = m.cadence {
+        let cv = m
+            .cadence_cv
+            .map(|c| format!("  · CV {:.0}%", c * 100.0))
+            .unwrap_or_default();
+        let stride = m
+            .avg_stride_m
+            .map(|s| format!("  · stride ~{:.2} m", s))
+            .unwrap_or_default();
+        println!(
+            "  Cadence  med {:.0}  · {:.0}–{:.0}{}{}  {}",
+            cad.median,
+            cad.min,
+            cad.max,
+            cv,
+            stride,
+            "(device units)".dimmed()
+        );
+    }
+
+    if m.elev_min_m.is_some() || m.elev_max_m.is_some() {
+        let mut parts = Vec::new();
+        if let (Some(lo), Some(hi)) = (m.elev_min_m, m.elev_max_m) {
+            parts.push(format!("{:.0}–{:.0} m", lo, hi));
+        }
+        if let Some(net) = m.elev_net_m {
+            parts.push(format!("net {:+.0} m", net));
+        }
+        if let (Some(a), Some(d)) = (m.ascent_m, m.descent_m) {
+            parts.push(format!("↑{:.0} ↓{:.0} (smoothed)", a, d));
+        }
+        if let Some(gap) = m.grade_adj_pace_min_per_km {
+            parts.push(format!("GAP {}", format_pace(gap)));
+        }
+        if let Some(vam) = m.vam_m_per_hour {
+            parts.push(format!("VAM {:.0} m/h", vam));
+        }
+        if !parts.is_empty() {
+            println!("  Elev     {}", parts.join("  ·  "));
+        }
+    }
+
+    {
+        let mut hr_parts = Vec::new();
+        if let Some(min) = m.hr_min {
+            hr_parts.push(format!("min {:.0}", min));
+        }
+        if let Some(drift) = m.hr_drift_pct {
+            hr_parts.push(format!("drift {:+.1}%", drift));
+        }
+        if !hr_parts.is_empty() {
+            println!("  HR       {}", hr_parts.join("  ·  ").red());
+        }
+    }
+
+    if stored_zones_empty {
+        if let Some(ref z) = m.hr_zones_recomputed {
+            let total = z.z1_seconds + z.z2_seconds + z.z3_seconds + z.z4_seconds + z.z5_seconds;
+            if total > 0 {
+                println!("  Track zones: {}", format_hr_zones_bar(z));
+            }
+        }
+    }
+
+    if let Some(ref route) = m.route {
+        let kind = match route.kind {
+            RouteKind::Loop => "loop",
+            RouteKind::PointToPoint => "point-to-point",
+            RouteKind::Unknown => "unknown",
+        };
+        let mut parts = vec![kind.to_string()];
+        if let Some(gps) = route.gps_distance_km {
+            if let Some(dev) = device_distance_km {
+                parts.push(format!("GPS {:.2} km (device {:.2})", gps, dev));
+            } else {
+                parts.push(format!("GPS {:.2} km", gps));
+            }
+        }
+        if let Some(gap) = route.start_end_gap_m {
+            parts.push(format!("start–end {:.0} m", gap));
+        }
+        println!("  Route    {}", parts.join("  ·  "));
+    }
+
+    if show_synthetic_splits {
+        let full: Vec<_> = m
+            .synthetic_km_splits
+            .iter()
+            .filter(|s| !s.partial || s.distance_km >= 0.2)
+            .collect();
+        if full.iter().any(|s| !s.partial) {
+            println!("\n{}", "COMPUTED KM SPLITS".bold().yellow());
+            let show_hr = full.iter().any(|s| s.avg_hr.is_some());
+            let mut rows = Vec::new();
+            for s in full {
+                let label = if s.partial {
+                    format!("{:.2}*", s.distance_km)
+                } else {
+                    s.km_index.to_string()
+                };
+                let mut row = vec![
+                    label,
+                    format!("{:.2} km", s.distance_km),
+                    format_duration(s.duration_seconds),
+                    format_pace(s.pace_min_per_km).green().to_string(),
+                ];
+                if show_hr {
+                    row.push(
+                        s.avg_hr
+                            .map(|h| format!("{:.0}", h))
+                            .unwrap_or_else(|| "--".into()),
+                    );
+                }
+                rows.push(row);
+            }
+            if show_hr {
+                print_table(vec!["Km", "Distance", "Time", "Pace", "Avg HR"], rows);
+            } else {
+                print_table(vec!["Km", "Distance", "Time", "Pace"], rows);
+            }
+        }
+    }
 }
 
 async fn get_workout_summary(
